@@ -1,0 +1,42 @@
+下载模型
+
+套垃圾袋    assets   params
+/home/zy/Project/ks3_internal/ks3util-linux-amd64 \
+  -c /home/zy/Project/ks3_internal/ks3util-config \
+  -r \
+  -u \
+  --read-timeout 6 \
+  --jobs=64 \
+  cp \
+     ks3://baai-emllm/xschen/hotel-demo/checkpoints/lv_train_80k_gabage_bag_202605150150/79999/params \
+  /home/zy/Project/model/black_bag/V5
+
+
+gb@2023
+整理桌面  assets   params
+/home/zy/Project/ks3_internal/ks3util-linux-amd64 \
+  -c /home/zy/Project/ks3_internal/ks3util-config \
+  -r \
+  -u \
+  --read-timeout 6 \
+  --jobs=64 \
+  cp \
+      ks3://baai-emllm/xschen/hotel-demo/checkpoints/table_trash_4tasks_20260509_trial1/79999/params \
+  /home/zy/Project/model/table_v1/79999
+  
+  
+  
+  地面捡垃圾    assets   params
+  /home/zy/Project/ks3_internal/ks3util-linux-amd64 \
+  -c /home/zy/Project/ks3_internal/ks3util-config \
+  -r \
+  -u \
+  --read-timeout 6 \
+  --jobs=64 \
+  cp \
+      ks3://baai-emllm/xschen/hotel-demo/checkpoints/combined_2tasks_ground_trial1_202605082100/79999 \
+  /home/zy/Project/model/ground
+  
+  
+  
+  
