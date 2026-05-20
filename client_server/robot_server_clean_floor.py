@@ -24,7 +24,7 @@ import copy
 from flask import Flask, jsonify
 import argparse
 
-# 
+
 class GalbotVLA:
     def __init__(self, args: Args):
         self.args = copy.deepcopy(args)

@@ -639,11 +639,15 @@ def _run_task(task_key: str):
 
 
 def _start_task(task_key: str, label: str):
-    """通用启动逻辑：检查并发 → 启动后台线程"""
+    """通用启动逻辑：如果有任务在跑先停掉 → 启动后台线程"""
     global _task_thread
     with _task_lock:
         if _task_status["running"]:
-            return _err("任务正在执行中，请稍后再试")
+            # 有任务在跑，先停掉
+            _vla.shutdown()
+    # 等待旧线程退出
+    if _task_thread and _task_thread.is_alive():
+        _task_thread.join(timeout=10)
     _task_thread = threading.Thread(target=_run_task, args=(task_key,), daemon=True)
     _task_thread.start()
     return _ok(msg=f"{label}推理任务已启动")
