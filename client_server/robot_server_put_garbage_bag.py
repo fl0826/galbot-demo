@@ -584,13 +584,28 @@ def _run_task():
 
 @app.route("/api/put_garbage_bag", methods=["POST"])
 def api_put_garbage_bag():
+    """带复位的推理接口（正常启动）"""
     global _task_thread
     with _task_lock:
         if _task_status["running"]:
             return _err("任务正在执行中，请稍后再试")
+    _args_global.has_init_action = True
     _task_thread = threading.Thread(target=_run_task, daemon=True)
     _task_thread.start()
-    return _ok(msg="套垃圾袋推理任务已启动")
+    return _ok(msg="套垃圾袋推理任务已启动（含复位）")
+
+
+@app.route("/api/put_garbage_bag_resume", methods=["POST"])
+def api_put_garbage_bag_resume():
+    """不带复位的推理接口（断点续推）"""
+    global _task_thread
+    with _task_lock:
+        if _task_status["running"]:
+            return _err("任务正在执行中，请稍后再试")
+    _args_global.has_init_action = False
+    _task_thread = threading.Thread(target=_run_task, daemon=True)
+    _task_thread.start()
+    return _ok(msg="套垃圾袋推理任务已启动（跳过复位，断点续推）")
 
 
 @app.route("/api/stop", methods=["POST"])
@@ -646,6 +661,7 @@ if __name__ == "__main__":
     print("=" * 60)
     print(f"[Server] 端口: {SERVER_PORT}")
     print(f"[API]    触发推理: POST http://localhost:{SERVER_PORT}/api/put_garbage_bag")
+    print(f"[API]    断点续推: POST http://localhost:{SERVER_PORT}/api/put_garbage_bag_resume")
     print(f"[API]    任务状态: GET  http://localhost:{SERVER_PORT}/api/status")
     print(f"[API]    停止任务: POST http://localhost:{SERVER_PORT}/api/stop")
     print(f"[API]    健康检查: GET  http://localhost:{SERVER_PORT}/api/health")
