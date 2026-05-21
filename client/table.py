@@ -8,8 +8,15 @@
   s - 停止当前推理
   q - 退出程序
 """
+
 import sys
 import os
+import ctypes
+
+# 抑制 NvMMLite 等底层 C 库的 stdout/stderr 输出
+_devnull_fd = os.open(os.devnull, os.O_WRONLY)
+_old_stderr_fd = os.dup(2)
+os.dup2(_devnull_fd, 2)
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 from args import (
@@ -29,7 +36,6 @@ import threading
 import time
 import numpy as np
 import copy
-
 
 # ==================== 任务定义 ====================
 TASKS = {
@@ -495,12 +501,21 @@ if __name__ == "__main__":
     _logger = LoggerManager.get_logger()
     for listener in LoggerManager._queue_listeners.values():
         for handler in listener.handlers:
-            if isinstance(handler, logging.StreamHandler) and not isinstance(handler, logging.FileHandler):
+            if isinstance(handler, logging.StreamHandler) and not isinstance(
+                handler, logging.FileHandler
+            ):
                 handler.setLevel(logging.ERROR)
 
     parser = argparse.ArgumentParser(description="清理桌面交互式推理")
-    parser.add_argument("--model-host", default=None, help="模型服务器IP（不传则用args.py中的配置）")
-    parser.add_argument("--model-port", type=int, default=None, help="模型端口（不传则用args.py中的配置）")
+    parser.add_argument(
+        "--model-host", default=None, help="模型服务器IP（不传则用args.py中的配置）"
+    )
+    parser.add_argument(
+        "--model-port",
+        type=int,
+        default=None,
+        help="模型端口（不传则用args.py中的配置）",
+    )
     cli_args = parser.parse_args()
 
     args = Args()
@@ -520,5 +535,9 @@ if __name__ == "__main__":
         tool_shutdown.on_shutdown(vla.model_agent[i].ws_client.conn.close)
 
     time.sleep(3)
+
+    # 恢复 stderr，让 Python 的 print/error 正常输出
+    os.dup2(_old_stderr_fd, 2)
+    os.close(_devnull_fd)
 
     keyboard_listener(vla, args)

@@ -573,7 +573,7 @@ TASK_MAP = {
         "task": "Pick up the bag and place it on the table.",
         "need_init_pose": True,
     },
-        "bag_large_items": {
+    "bag_large_items": {
         "task": "Put the large objects on the table into the bag.",
         "need_init_pose": False,
     },
@@ -584,7 +584,7 @@ TASK_MAP = {
     "sweep_trash": {
         "task": "Sweep the remaining trash on the table into the white basin, then put it into the bag.",
         "need_init_pose": False,
-    }
+    },
 }
 
 
@@ -680,6 +680,24 @@ def api_stop():
     return _ok(msg="停止信号已发送")
 
 
+@app.route("/api/reset", methods=["POST"])
+def api_reset():
+    """仅复位，不推理"""
+    global _task_thread
+    # 先停掉当前任务
+    if _vla:
+        _vla.shutdown()
+    if _task_thread and _task_thread.is_alive():
+        _task_thread.join(timeout=10)
+    # 执行复位
+    _args_global.has_init_action = True
+    _vla.args = copy.deepcopy(_args_global)
+    _vla.galbot.args = _vla.args
+    _vla.galbot.galbot_interface.args = _vla.args
+    _vla.galbot.move_to_init_pose_wholebody()
+    return _ok(msg="复位完成")
+
+
 @app.route("/api/status", methods=["GET"])
 def api_status():
     with _task_lock:
@@ -732,6 +750,7 @@ if __name__ == "__main__":
     print(f"[API]    盖盖子:       POST http://localhost:{SERVER_PORT}/api/close_box")
     print(f"[API]    抹布清理:     POST http://localhost:{SERVER_PORT}/api/sweep_trash")
     print(f"[API]    停止任务:     POST http://localhost:{SERVER_PORT}/api/stop")
+    print(f"[API]    仅复位:       POST http://localhost:{SERVER_PORT}/api/reset")
     print(f"[API]    任务状态:     GET  http://localhost:{SERVER_PORT}/api/status")
     print(f"[API]    健康检查:     GET  http://localhost:{SERVER_PORT}/api/health")
     print("=" * 60)

@@ -1,11 +1,12 @@
 """
-套垃圾袋交互式推理脚本
+打扫地面交互式推理脚本
 启动后在终端输入数字操作：
   1 - 启动推理（含复位）
   2 - 仅复位（只复位不推理）
   s - 停止当前推理
   q - 退出程序
 """
+
 import sys
 import os
 
@@ -28,12 +29,11 @@ import time
 import numpy as np
 import copy
 
-
-TASK_PROMPT = "Put a garbage bag in the trash can."
+TASK_PROMPT = "Pick up all the trash on the ground one by one and put it into the trash can until there is no trash left on the ground."
 INIT_POSE_FILE = "config/init_pose/zhiyuan_pick_trash.json"
 
 
-class GalbotVLAPutGarbageBag:
+class GalbotVLACleanFloor:
     def __init__(self, args: Args):
         self.args = copy.deepcopy(args)
 
@@ -385,12 +385,12 @@ class GalbotVLAPutGarbageBag:
 
 
 # ==================== 键盘监听与任务调度 ====================
-def keyboard_listener(vla: GalbotVLAPutGarbageBag, args: Args):
+def keyboard_listener(vla: GalbotVLACleanFloor, args: Args):
     """在终端监听键盘输入"""
     logger = LoggerManager.get_logger()
 
     print("\n" + "=" * 60)
-    print("套垃圾袋交互式推理")
+    print("打扫地面交互式推理")
     print("  1 - 启动推理       (含复位)")
     print("  2 - 仅复位         (只复位不推理)")
     print("  s - 停止           q - 退出")
@@ -417,7 +417,7 @@ def keyboard_listener(vla: GalbotVLAPutGarbageBag, args: Args):
                 task_thread.join(timeout=5)
 
         elif cmd == "1":
-            print("启动套垃圾袋推理（含复位）")
+            print("启动打扫地面推理（含复位）")
 
             # 先停止当前推理
             vla.shutdown()
@@ -467,12 +467,21 @@ if __name__ == "__main__":
     _logger = LoggerManager.get_logger()
     for listener in LoggerManager._queue_listeners.values():
         for handler in listener.handlers:
-            if isinstance(handler, logging.StreamHandler) and not isinstance(handler, logging.FileHandler):
+            if isinstance(handler, logging.StreamHandler) and not isinstance(
+                handler, logging.FileHandler
+            ):
                 handler.setLevel(logging.ERROR)
 
-    parser = argparse.ArgumentParser(description="套垃圾袋交互式推理")
-    parser.add_argument("--model-host", default=None, help="模型服务器IP（不传则用args.py中的配置）")
-    parser.add_argument("--model-port", type=int, default=None, help="模型端口（不传则用args.py中的配置）")
+    parser = argparse.ArgumentParser(description="打扫地面交互式推理")
+    parser.add_argument(
+        "--model-host", default=None, help="模型服务器IP（不传则用args.py中的配置）"
+    )
+    parser.add_argument(
+        "--model-port",
+        type=int,
+        default=None,
+        help="模型端口（不传则用args.py中的配置）",
+    )
     cli_args = parser.parse_args()
 
     args = Args()
@@ -483,7 +492,7 @@ if __name__ == "__main__":
     args.task = TASK_PROMPT
     args.init_pose_file = INIT_POSE_FILE
 
-    vla = GalbotVLAPutGarbageBag(args)
+    vla = GalbotVLACleanFloor(args)
 
     tool_shutdown = ShutdownTool()
     tool_shutdown.on_shutdown(vla.shutdown)
