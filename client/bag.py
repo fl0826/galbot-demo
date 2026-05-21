@@ -6,7 +6,6 @@
   s - 停止当前推理
   q - 退出程序
 """
-
 import sys
 import os
 
@@ -28,6 +27,7 @@ import threading
 import time
 import numpy as np
 import copy
+
 
 TASK_PROMPT = "Put a garbage bag in the trash can."
 INIT_POSE_FILE = "config/init_pose/zhiyuan_pick_trash.json"
@@ -393,6 +393,7 @@ def keyboard_listener(vla: GalbotVLAPutGarbageBag, args: Args):
     print("套垃圾袋交互式推理")
     print("  1 - 启动推理       (含复位)")
     print("  2 - 仅复位         (只复位不推理)")
+    print("  3 - 断点续推       (不复位直接推理)")
     print("  s - 停止           q - 退出")
     print("=" * 60 + "\n")
 
@@ -455,6 +456,28 @@ def keyboard_listener(vla: GalbotVLAPutGarbageBag, args: Args):
             vla.galbot.move_to_init_pose_wholebody()
             print("复位完成")
 
+        elif cmd == "3":
+            print("断点续推（跳过复位）")
+
+            # 先停止当前推理
+            vla.shutdown()
+            if task_thread and task_thread.is_alive():
+                task_thread.join(timeout=5)
+            time.sleep(0.3)
+
+            # 不复位直接推理
+            args.has_init_action = False
+
+            def run_task(a):
+                success, msg = vla.run(a)
+                logger.info(f"任务结束: success={success}, msg={msg}")
+                print(f"任务结束: {'成功' if success else '失败'} - {msg}")
+
+            task_thread = threading.Thread(
+                target=run_task, args=(copy.deepcopy(args),), daemon=True
+            )
+            task_thread.start()
+
         else:
             pass
 
@@ -467,21 +490,12 @@ if __name__ == "__main__":
     _logger = LoggerManager.get_logger()
     for listener in LoggerManager._queue_listeners.values():
         for handler in listener.handlers:
-            if isinstance(handler, logging.StreamHandler) and not isinstance(
-                handler, logging.FileHandler
-            ):
+            if isinstance(handler, logging.StreamHandler) and not isinstance(handler, logging.FileHandler):
                 handler.setLevel(logging.ERROR)
 
     parser = argparse.ArgumentParser(description="套垃圾袋交互式推理")
-    parser.add_argument(
-        "--model-host", default=None, help="模型服务器IP（不传则用args.py中的配置）"
-    )
-    parser.add_argument(
-        "--model-port",
-        type=int,
-        default=None,
-        help="模型端口（不传则用args.py中的配置）",
-    )
+    parser.add_argument("--model-host", default=None, help="模型服务器IP（不传则用args.py中的配置）")
+    parser.add_argument("--model-port", type=int, default=None, help="模型端口（不传则用args.py中的配置）")
     cli_args = parser.parse_args()
 
     args = Args()
