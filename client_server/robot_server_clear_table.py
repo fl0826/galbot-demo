@@ -573,7 +573,7 @@ TASK_MAP = {
         "task": "Pick up the bag and place it on the table.",
         "need_init_pose": True,
     },
-        "bag_large_items": {
+    "bag_large_items": {
         "task": "Put the large objects on the table into the bag.",
         "need_init_pose": False,
     },
@@ -584,7 +584,7 @@ TASK_MAP = {
     "sweep_trash": {
         "task": "Sweep the remaining trash on the table into the white basin, then put it into the bag.",
         "need_init_pose": False,
-    }
+    },
 }
 
 
