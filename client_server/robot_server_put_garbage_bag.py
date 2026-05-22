@@ -536,6 +536,7 @@ MODEL_PORT = 6687  # 套垃圾袋模型端口
 
 _args_global = Args()
 _args_global.task = "Put a garbage bag in the trash can."
+_args_global.init_pose_file = "config/init_pose/zhiyuan_pick_trash.json"
 
 
 def _ok(data=None, msg=""):

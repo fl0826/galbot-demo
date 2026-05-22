@@ -536,6 +536,7 @@ MODEL_PORT = 6688  # 打扫地面模型端口
 
 _args_global = Args()
 _args_global.task = "Pick up all the trash on the ground one by one and put it into the trash can until there is no trash left on the ground."
+_args_global.init_pose_file = "config/init_pose/zhiyuan_pick_trash.json"
 
 
 def _ok(data=None, msg=""):
