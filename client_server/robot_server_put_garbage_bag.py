@@ -611,9 +611,34 @@ def api_put_garbage_bag_resume():
 
 @app.route("/api/stop", methods=["POST"])
 def api_stop():
-    if _vla:
-        _vla.shutdown()
-    return _ok(msg="停止信号已发送")
+    """停止推理 → 复位到初始位姿 → 再次停止"""
+    global _task_thread
+    if _vla is None:
+        return _ok(msg="服务未初始化")
+
+    # 1. 先停止当前推理
+    _vla.shutdown()
+    if _task_thread and _task_thread.is_alive():
+        _task_thread.join(timeout=10)
+    time.sleep(0.5)
+
+    # 2. 执行复位
+    try:
+        _args_global.has_init_action = True
+        _vla.args = copy.deepcopy(_args_global)
+        _vla.galbot.args = _vla.args
+        _vla.galbot.galbot_interface.args = _vla.args
+        _vla.galbot.shutdown_event.clear()
+        _vla.galbot.error_imformation = ""
+        _vla.shutdown_event.clear()
+        _vla.galbot.move_to_init_pose_wholebody()
+    except Exception as e:
+        LoggerManager.get_logger().error(f"复位异常: {e}", exc_info=True)
+        return _err(f"停止已发送，但复位失败: {e}")
+
+    # 3. 再次停止
+    _vla.shutdown()
+    return _ok(msg="已停止 → 已复位 → 已停止")
 
 
 @app.route("/api/status", methods=["GET"])
