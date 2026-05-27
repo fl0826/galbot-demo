@@ -537,6 +537,9 @@ MODEL_PORT = 6688  # 打扫地面模型端口
 _args_global = Args()
 _args_global.task = "Pick up all the trash on the ground one by one and put it into the trash can until there is no trash left on the ground."
 _args_global.init_pose_file = "config/init_pose/zhiyuan_pick_trash.json"
+# 数采模式：双手腕相机用 640x360
+_args_global.raw_image_size_left_arm = [640, 360]
+_args_global.raw_image_size_right_arm = [640, 360]
 
 
 def _ok(data=None, msg=""):

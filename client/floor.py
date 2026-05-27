@@ -6,7 +6,6 @@
   s - 停止当前推理
   q - 退出程序
 """
-
 import sys
 import os
 
@@ -32,6 +31,7 @@ import threading
 import time
 import numpy as np
 import copy
+
 
 TASK_PROMPT = "Pick up all the trash on the ground one by one and put it into the trash can until there is no trash left on the ground."
 INIT_POSE_FILE = "config/init_pose/zhiyuan_pick_trash.json"
@@ -494,30 +494,22 @@ if __name__ == "__main__":
     _logger = LoggerManager.get_logger()
     for listener in LoggerManager._queue_listeners.values():
         for handler in listener.handlers:
-            if isinstance(handler, logging.StreamHandler) and not isinstance(
-                handler, logging.FileHandler
-            ):
+            if isinstance(handler, logging.StreamHandler) and not isinstance(handler, logging.FileHandler):
                 handler.setLevel(logging.ERROR)
 
     parser = argparse.ArgumentParser(description="打扫地面交互式推理")
-    parser.add_argument(
-        "--model-host", default=None, help="模型服务器IP（不传则用args.py中的配置）"
-    )
-    parser.add_argument(
-        "--model-port",
-        type=int,
-        default=None,
-        help="模型端口（不传则用args.py中的配置）",
-    )
+    parser.add_argument("--model-host", default=None, help="模型服务器IP（不传则用args.py中的配置）")
     cli_args = parser.parse_args()
 
     args = Args()
     if cli_args.model_host is not None:
         args.host = [cli_args.model_host]
-    if cli_args.model_port is not None:
-        args.port = [cli_args.model_port]
+    # 地面专用参数（写死，不再依赖 args.py 默认值）
+    args.port = [6688]
     args.task = TASK_PROMPT
     args.init_pose_file = INIT_POSE_FILE
+    args.raw_image_size_left_arm = [640, 360]   # 数采模式
+    args.raw_image_size_right_arm = [640, 360]  # 数采模式
 
     vla = GalbotVLACleanFloor(args)
 

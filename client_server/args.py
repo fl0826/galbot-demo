@@ -25,15 +25,21 @@ class Args:
     #   - init_pose     : meta/init_pose.json → "init_pose" (23-dim wire layout)
     # Only consumed when input_source == "general".
     # ==========================================================================
-   
+    
+    # 垃圾袋
+    # task : str = "Put a garbage bag in the trash can."
+
     # 桌面
-    task : str = "Pick up the bag and place it on the table."
+    # task : str = "Pick up the bag and place it on the table."
     # task : str = "Put the large objects on the table into the bag."
     # task : str = "Close the box and put it into the bag."
     #  task : str = "Sweep the remaining trash on the table into the white basin, then put it into the bag."
     
     # 地面
     # task : str = "Pick up all the trash on the ground one by one and put it into the trash can until there is no trash left on the ground."
+
+    task : str = "Pick up the trash can."
+    # task : str = "Put the garbage on the ground one by one into the trash can until there is no more garbage on the ground."
 
 
    
@@ -62,9 +68,11 @@ class Args:
     # ==========================================================================
     # Region C — network / control / image / misc (common to both modes)
     # ==========================================================================
-    host = ["10.0.100.34"]
-    port=[6686]         # 桌面
-    # port=[6688]       # 地面
+    # host = ["10.0.100.34"]
+    host = ["192.168.1.99"]
+    # port=[6686]         # 桌面
+    port=[6688]       # 地面
+    # port=[6687]       # 垃圾袋
 
     # None → fall back to init_pose[14] / init_pose[22] (i.e. whatever the
     # Region A init_pose or Region B config file carried).  Non-empty list
@@ -74,7 +82,9 @@ class Args:
     action_horizon: int = 30
     action_horizon_use: int = 30
     proprio_step: int = 3  # 包括当前，有几帧动作
-    blocking: bool = False
+    # blocking: bool = True  # 阻塞
+    blocking: bool = False  # 非阻塞
+
     dt_model_control: float = 0.06
     enable_chassis: float = 1.0
     enable_takeover: float = 1.0
@@ -84,10 +94,11 @@ class Args:
     target_image_size_left_arm:  List[int] = [224, 224]
     target_image_size_right_arm: List[int] = [224, 224]
     raw_image_size_head:      List[int] = [1280, 960]
-    # raw_image_size_left_arm:  List[int] = [1280, 720]
-    raw_image_size_left_arm:  List[int] = [640, 360]
-    # raw_image_size_right_arm: List[int] = [1280, 720]
-    raw_image_size_right_arm: List[int] = [640, 360]
+
+    raw_image_size_left_arm:  List[int] = [1280, 720]   # 工作用大的
+    raw_image_size_right_arm: List[int] = [1280, 720]
+    # raw_image_size_left_arm:  List[int] = [640, 360]  # 数采用小的
+    # raw_image_size_right_arm: List[int] = [640, 360]
 
     gripper_vel: float = 100  # 0-200, 负数表示按规划速度运动
     gripper_effort: float = 70

@@ -1,10 +1,11 @@
 """
-套垃圾袋交互式推理脚本
-启动后在终端输入数字操作：
-  1 - 启动推理（含复位）
-  2 - 仅复位（只复位不推理）
-  s - 停止当前推理
-  q - 退出程序
+清理桌面全自动推理脚本（仅3个任务：1+2+4，跳过盖盖子）
+启动后从任务1开始，按 action delta 自动判断任务完成并切换：
+  pick_bag → bag_large_items → sweep_trash
+全部完成后自动退出。
+
+判定逻辑：连续 IDLE_FRAMES 次推理满足 (ARMS_max < IDLE_ARMS_THR) AND (LEG_max < IDLE_LEG_THR)
+基于 aaa_20260523_*.txt 日志分析得到的阈值。
 """
 import sys
 import os
@@ -26,18 +27,42 @@ from model_agent.model_agent import ModelAgent
 from galbot_control.galbot_control import GalbotControl
 from tool.logger import LoggerManager
 from tool.tool_shutdown import ShutdownTool
-from tool.tool_rate import ToolRate
 import threading
 import time
 import numpy as np
 import copy
 
 
-TASK_PROMPT = "Put a garbage bag in the trash can."
-INIT_POSE_FILE = "config/init_pose/zhiyuan_pick_trash.json"
+# ==================== 任务完成判定阈值 ====================
+IDLE_ARMS_THR = 0.012   # 双臂 14 维 action delta 的最大值阈值
+IDLE_LEG_THR = 0.004    # 腰部 5 维 action delta 的最大值阈值
+IDLE_FRAMES = 30        # 连续多少次推理满足才判定为任务完成（约 3 秒）
 
 
-class GalbotVLAPutGarbageBag:
+# ==================== 任务序列 ====================
+TASK_LIST = [
+    {
+        "name": "pick_bag",
+        "label": "升降取垃圾袋",
+        "task": "Pick up the bag and place it on the table.",
+        "need_init_pose": True,
+    },
+    {
+        "name": "bag_large_items",
+        "label": "桌面物品清理",
+        "task": "Put the large objects on the table into the bag.",
+        "need_init_pose": False,
+    },
+    {
+        "name": "sweep_trash",
+        "label": "抹布清理",
+        "task": "Sweep the remaining trash on the table into the white basin, then put it into the bag.",
+        "need_init_pose": False,
+    },
+]
+
+
+class GalbotVLAAuto:
     def __init__(self, args: Args):
         self.args = copy.deepcopy(args)
 
@@ -58,13 +83,48 @@ class GalbotVLAPutGarbageBag:
 
         self.galbot = GalbotControl(args)
         self.flag_has_moved_to_init_pose = False
-        self.flag_start_listen_keyboard = True
         self.grasp_count = 0
         self.shutdown_event = threading.Event()
         self.vla_model_error = False
         self.logger = LoggerManager.get_logger()
         self.vla_cost_time = 0
         self.lock_exit = threading.Lock()
+
+        # 任务完成检测计数器
+        self._idle_count = 0
+        self._task_done = False  # 标记是因为任务完成而退出（区别于错误退出）
+
+    def _check_idle(self, actions):
+        """每次推理后调用：判断 action 是否处于"任务完成"状态。
+        actions: shape (action_horizon, >=23) 的 numpy array (delta action)
+        """
+        if actions is None:
+            return
+        a = np.asarray(actions)
+        if a.ndim != 2 or a.shape[1] < 23:
+            return
+
+        arms_max = float(np.abs(a[:, 7:14]).max())  # 左臂 7 维
+        rarms_max = float(np.abs(a[:, 15:22]).max())  # 右臂 7 维
+        arms_max = max(arms_max, rarms_max)
+        leg_max = float(np.abs(a[:, 0:5]).max())
+
+        if arms_max < IDLE_ARMS_THR and leg_max < IDLE_LEG_THR:
+            self._idle_count += 1
+            if self._idle_count >= IDLE_FRAMES:
+                self.logger.info(
+                    f"[auto_done] idle {self._idle_count} frames "
+                    f"(arms_max<{IDLE_ARMS_THR}, leg_max<{IDLE_LEG_THR}), task done"
+                )
+                self._task_done = True
+                # 关键：设 flag=-1 让 infer_thread 真正退出循环（仅设 shutdown_event 不够）
+                with self.lock_exit:
+                    for i in range(len(self.flag_infer_thread_is_run)):
+                        if self.flag_infer_thread_is_run[i] == 1:
+                            self.flag_infer_thread_is_run[i] = -1
+                self.shutdown_event.set()
+        else:
+            self._idle_count = 0
 
     def run(self, args: Args):
         self.logger.info("in_Vla")
@@ -83,6 +143,9 @@ class GalbotVLAPutGarbageBag:
         self.shutdown_event.clear()
         self.vla_model_error = False
         self.vla_cost_time = 0
+        # 重置任务完成检测
+        self._idle_count = 0
+        self._task_done = False
         for i in range(len(self.args.host)):
             self.flag_infer_thread_is_run[i] = 0
             self.flag_model_first_infer[i] = True
@@ -92,6 +155,25 @@ class GalbotVLAPutGarbageBag:
             self.blocking_mode()
         else:
             self.nonblocking_mode()
+
+        # 等待 infer_thread 真正退出（避免下一轮启动时 ws 并发 recv 冲突）
+        if not self.args.blocking:
+            t_wait = time.perf_counter()
+            while True:
+                if all(f == 0 for f in self.flag_infer_thread_is_run):
+                    break
+                if time.perf_counter() - t_wait > 5:
+                    self.logger.warning("infer_thread did not exit in 5s, force closing ws")
+                    # 强制关闭 ws 连接，让阻塞的 recv 立即返回
+                    for agent in self.model_agent:
+                        try:
+                            agent.ws_client.conn.close()
+                        except Exception:
+                            pass
+                    # 再等一会儿让线程退出
+                    time.sleep(0.5)
+                    break
+                time.sleep(0.05)
 
         time.sleep(0.1)
         self.galbot.args.has_init_action = False
@@ -108,10 +190,11 @@ class GalbotVLAPutGarbageBag:
                 time.perf_counter() - t0
                 > self.args.action_horizon_use * self.args.dt_model_control + 1
             ):
-                self.logger.info("exit vla request_vla_service('stop') time out stop ")
                 break
 
         self.logger.info("out_Vla")
+        if self._task_done:
+            return True, "auto_done"
         if self.galbot.error_imformation == "":
             return True, "success"
         else:
@@ -131,6 +214,9 @@ class GalbotVLAPutGarbageBag:
 
             try:
                 response = self.model_agent[0].infer(obs)
+                # 自动判断任务是否完成
+                if "actions" in response:
+                    self._check_idle(response["actions"])
             except Exception as e:
                 error_msg = f"vla model error : {type(e).__name__}: {str(e)}"
                 self.logger.error(error_msg)
@@ -173,100 +259,12 @@ class GalbotVLAPutGarbageBag:
                     thread_ = threading.Thread(target=self.infer_thread, args=(i,))
                     thread_.start()
 
-            if (
-                self.check_stop()
-                and self.args.auto_stop
-                and self.flag_has_moved_to_init_pose
-                and sum(self.flag_infer_thread_is_run) == len(self.args.host)
-                and self.galbot.error_imformation == ""
-            ):
-                with self.lock_exit:
-                    for i in range(len(self.args.host)):
-                        self.flag_infer_thread_is_run[i] = -1
-
-                q_wholebody = self.galbot.galbot_interface.pose_buffer[1]
-                if q_wholebody[22] > self.args.success_gripper_width:
-                    self.logger.info(
-                        "success, gripper width is "
-                        + str(q_wholebody[22])
-                        + "m > "
-                        + str(self.args.success_gripper_width)
-                        + "m"
-                    )
-                    self.shutdown_event.set()
-                    self.galbot.shutdown()
-                    break
-                elif self.args.allow_retry:
-                    self.logger.error(
-                        "start retry, right gripper width is "
-                        + str(q_wholebody[22])
-                        + "m <="
-                        + str(self.args.success_gripper_width)
-                        + "m"
-                    )
-                    self.flag_has_moved_to_init_pose = False
-                    self.galbot.args.has_init_action = True
-                    self.grasp_count = self.grasp_count + 1
-                    if self.grasp_count >= self.args.retry_fail_max_num:
-                        self.logger.error(
-                            f"retry exceeded the limit {self.args.retry_fail_max_num} times, "
-                        )
-                        self.galbot.error_imformation = (
-                            self.galbot.error_imformation
-                            + f"retry exceeded the limit {self.args.retry_fail_max_num} times, "
-                        )
-                else:
-                    self.galbot.error_imformation = (
-                        self.galbot.error_imformation
-                        + "failed, right gripper width is "
-                        + str(q_wholebody[22])
-                        + "m <="
-                        + str(self.args.success_gripper_width)
-                        + "m"
-                    )
-                    self.logger.error(
-                        "failed, right gripper width is "
-                        + str(q_wholebody[22])
-                        + "m <="
-                        + str(self.args.success_gripper_width)
-                        + "m"
-                    )
-
-            if self.args.auto_stop and self.vla_cost_time > self.args.vla_max_cost_time:
-                self.vla_cost_time = 0
-                with self.lock_exit:
-                    for i in range(len(self.args.host)):
-                        self.flag_infer_thread_is_run[i] = -1
-
-                if self.args.allow_retry:
-                    self.logger.error(
-                        "start retry, "
-                        + f"vla_cost_time more than {self.args.vla_max_cost_time}s"
-                    )
-                    self.flag_has_moved_to_init_pose = False
-                    self.galbot.args.has_init_action = True
-                    self.grasp_count = self.grasp_count + 1
-                    if self.grasp_count >= self.args.retry_fail_max_num:
-                        self.logger.error(
-                            f"retry exceeded the limit {self.args.retry_fail_max_num} times, "
-                        )
-                        self.galbot.error_imformation = (
-                            self.galbot.error_imformation
-                            + f"retry exceeded the limit {self.args.retry_fail_max_num} times, "
-                        )
-                else:
-                    self.galbot.error_imformation = (
-                        self.galbot.error_imformation
-                        + f"vla_cost_time more than {self.args.vla_max_cost_time}s"
-                    )
-
             if self.galbot.error_imformation != "":
                 self.logger.error(self.galbot.error_imformation)
                 with self.lock_exit:
                     if sum(self.flag_infer_thread_is_run) == len(self.args.host):
                         for i in range(len(self.args.host)):
                             self.flag_infer_thread_is_run[i] = -1
-
                 self.shutdown_event.set()
                 self.galbot.shutdown()
                 break
@@ -290,6 +288,9 @@ class GalbotVLAPutGarbageBag:
 
             try:
                 response = self.model_agent[i].infer(obs)
+                # 自动判断任务是否完成
+                if "actions" in response:
+                    self._check_idle(response["actions"])
             except Exception as e:
                 error_msg = (
                     f"vla model error (thread {i}): {type(e).__name__}: {str(e)}"
@@ -324,42 +325,6 @@ class GalbotVLAPutGarbageBag:
 
         time.sleep(0.1)
         self.flag_infer_thread_is_run[i] = 0
-        self.logger.info(f"推理线程{i}退出")
-
-    def check_stop(self):
-        if self.galbot.error_imformation != "":
-            return False
-
-        dis = self.args.auto_stop_distance
-        left_end_T = self.galbot.galbot_interface.left_end_T
-        left_end_T_deepest = self.galbot.galbot_interface.left_end_T_deepest
-        right_end_T = self.galbot.galbot_interface.right_end_T
-        right_end_T_deepest = self.galbot.galbot_interface.right_end_T_deepest
-
-        if len(self.args.object_name) == 1:
-            if (
-                np.linalg.norm(right_end_T[0:3, 3:4] - right_end_T_deepest[0:3, 3:4])
-                > dis
-            ) or (
-                np.linalg.norm(left_end_T[0:3, 3:4] - left_end_T_deepest[0:3, 3:4])
-                > dis
-            ):
-                return True
-            else:
-                return False
-        elif len(self.args.object_name) == 2:
-            if (
-                np.linalg.norm(right_end_T[0:3, 3:4] - right_end_T_deepest[0:3, 3:4])
-                > dis
-            ) and (
-                np.linalg.norm(left_end_T[0:3, 3:4] - left_end_T_deepest[0:3, 3:4])
-                > dis
-            ):
-                return True
-            else:
-                return False
-        else:
-            return False
 
     def shutdown(self):
         with self.lock_exit:
@@ -373,7 +338,6 @@ class GalbotVLAPutGarbageBag:
         t0 = time.perf_counter()
         while True:
             res = self.galbot.request_vla_service("stop")
-            self.logger.info("shutdown exit vla request_vla_service('stop'): " + res)
             if res == "stop":
                 break
             else:
@@ -382,108 +346,49 @@ class GalbotVLAPutGarbageBag:
                 time.perf_counter() - t0
                 > self.args.action_horizon_use * self.args.dt_model_control + 1
             ):
-                self.logger.info(
-                    "shutdown exit vla request_vla_service('stop') time out stop "
-                )
                 break
 
 
-# ==================== 键盘监听与任务调度 ====================
-def keyboard_listener(vla: GalbotVLAPutGarbageBag, args: Args):
-    """在终端监听键盘输入"""
-    logger = LoggerManager.get_logger()
-
+def auto_run_all(vla: GalbotVLAAuto, args: Args):
+    """依次执行 TASK_LIST 中所有任务，自动切换"""
     print("\n" + "=" * 60)
-    print("套垃圾袋交互式推理")
-    print("  1 - 启动推理       (含复位)")
-    print("  2 - 仅复位         (只复位不推理)")
-    print("  3 - 断点续推       (不复位直接推理)")
-    print("  s - 停止           q - 退出")
+    print("清理桌面全自动推理（跳过盖盖子）")
+    print(f"任务序列: " + " → ".join(t["label"] for t in TASK_LIST))
+    print(f"判定阈值: ARMS<{IDLE_ARMS_THR}, LEG<{IDLE_LEG_THR}, 连续{IDLE_FRAMES}次")
+    print("Ctrl+C 中断")
     print("=" * 60 + "\n")
 
-    task_thread = None
+    for idx, task_config in enumerate(TASK_LIST, start=1):
+        print(f"[{idx}/{len(TASK_LIST)}] >>> 当前任务: {task_config['label']} ({task_config['name']})")
+        args.task = task_config["task"]
+        args.has_init_action = task_config["need_init_pose"]
 
-    while True:
+        # 切任务前确保上一轮彻底停干净（参考手动 table.py 的做法）
+        vla.shutdown()
+        time.sleep(0.3)
+
         try:
-            cmd = input(">>> 输入指令: ").strip().lower()
-        except (EOFError, KeyboardInterrupt):
-            cmd = "q"
-
-        if cmd == "q":
+            success, msg = vla.run(args)
+        except KeyboardInterrupt:
+            print("\n[中断] 用户终止")
             vla.shutdown()
-            if task_thread and task_thread.is_alive():
-                task_thread.join(timeout=5)
-            break
-
-        elif cmd == "s":
-            print("已停止")
+            return
+        except Exception as e:
+            print(f"\n[异常] {e}")
             vla.shutdown()
-            if task_thread and task_thread.is_alive():
-                task_thread.join(timeout=5)
+            return
 
-        elif cmd == "1":
-            print("启动套垃圾袋推理（含复位）")
+        print(f"[{idx}/{len(TASK_LIST)}] 完成: {task_config['label']} - {msg}")
 
-            # 先停止当前推理
-            vla.shutdown()
-            if task_thread and task_thread.is_alive():
-                task_thread.join(timeout=5)
-            time.sleep(0.3)
+        if not success:
+            print(f"[失败] 中止后续任务")
+            return
 
-            # 设置参数
-            args.has_init_action = True
+        time.sleep(0.5)
 
-            # 启动推理
-            def run_task(a):
-                success, msg = vla.run(a)
-                logger.info(f"任务结束: success={success}, msg={msg}")
-                print(f"任务结束: {'成功' if success else '失败'} - {msg}")
-
-            task_thread = threading.Thread(
-                target=run_task, args=(copy.deepcopy(args),), daemon=True
-            )
-            task_thread.start()
-
-        elif cmd == "2":
-            print("执行复位...")
-            # 先停止当前推理
-            vla.shutdown()
-            if task_thread and task_thread.is_alive():
-                task_thread.join(timeout=5)
-            time.sleep(0.3)
-
-            # 只复位不推理
-            args.has_init_action = True
-            vla.args = copy.deepcopy(args)
-            vla.galbot.args = vla.args
-            vla.galbot.galbot_interface.args = vla.args
-            vla.galbot.move_to_init_pose_wholebody()
-            print("复位完成")
-
-        elif cmd == "3":
-            print("断点续推（跳过复位）")
-
-            # 先停止当前推理
-            vla.shutdown()
-            if task_thread and task_thread.is_alive():
-                task_thread.join(timeout=5)
-            time.sleep(0.3)
-
-            # 不复位直接推理
-            args.has_init_action = False
-
-            def run_task(a):
-                success, msg = vla.run(a)
-                logger.info(f"任务结束: success={success}, msg={msg}")
-                print(f"任务结束: {'成功' if success else '失败'} - {msg}")
-
-            task_thread = threading.Thread(
-                target=run_task, args=(copy.deepcopy(args),), daemon=True
-            )
-            task_thread.start()
-
-        else:
-            pass
+    print("\n" + "=" * 60)
+    print("全部任务执行完毕，自动退出")
+    print("=" * 60)
 
 
 if __name__ == "__main__":
@@ -497,21 +402,21 @@ if __name__ == "__main__":
             if isinstance(handler, logging.StreamHandler) and not isinstance(handler, logging.FileHandler):
                 handler.setLevel(logging.ERROR)
 
-    parser = argparse.ArgumentParser(description="套垃圾袋交互式推理")
+    parser = argparse.ArgumentParser(description="清理桌面全自动推理（跳过盖盖子）")
     parser.add_argument("--model-host", default=None, help="模型服务器IP（不传则用args.py中的配置）")
     cli_args = parser.parse_args()
 
     args = Args()
     if cli_args.model_host is not None:
         args.host = [cli_args.model_host]
-    # 套垃圾袋专用参数（写死，不再依赖 args.py 默认值）
-    args.port = [6687]
-    args.task = TASK_PROMPT
-    args.init_pose_file = INIT_POSE_FILE
+    # 桌面专用参数（写死，不再依赖 args.py 默认值）
+    args.port = [6686]
+    args.init_pose_file = "config/init_pose/zhiyuan_pick_trash_stand.json"
     args.raw_image_size_left_arm = [1280, 720]   # 工作模式
     args.raw_image_size_right_arm = [1280, 720]  # 工作模式
+    args.task = TASK_LIST[0]["task"]
 
-    vla = GalbotVLAPutGarbageBag(args)
+    vla = GalbotVLAAuto(args)
 
     tool_shutdown = ShutdownTool()
     tool_shutdown.on_shutdown(vla.shutdown)
@@ -521,4 +426,7 @@ if __name__ == "__main__":
 
     time.sleep(3)
 
-    keyboard_listener(vla, args)
+    # stderr 保持重定向到 /dev/null，抑制 NvMMLite 等底层 C 库的输出
+    # （Python 的 print 走 stdout 不受影响，logger 的 ERROR 也走 stdout）
+
+    auto_run_all(vla, args)

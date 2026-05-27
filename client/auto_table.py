@@ -12,7 +12,6 @@ import os
 
 # 抑制 NvMMLite 等底层 C 库的 stderr 输出
 _devnull_fd = os.open(os.devnull, os.O_WRONLY)
-_old_stderr_fd = os.dup(2)
 os.dup2(_devnull_fd, 2)
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
@@ -411,16 +410,17 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="清理桌面全自动推理")
     parser.add_argument("--model-host", default=None, help="模型服务器IP（不传则用args.py中的配置）")
-    parser.add_argument("--model-port", type=int, default=None, help="模型端口（不传则用args.py中的配置）")
     cli_args = parser.parse_args()
 
     args = Args()
     if cli_args.model_host is not None:
         args.host = [cli_args.model_host]
-    if cli_args.model_port is not None:
-        args.port = [cli_args.model_port]
-    args.task = TASK_LIST[0]["task"]
+    # 桌面专用参数（写死，不再依赖 args.py 默认值）
+    args.port = [6686]
     args.init_pose_file = "config/init_pose/zhiyuan_pick_trash_stand.json"
+    args.raw_image_size_left_arm = [1280, 720]   # 工作模式
+    args.raw_image_size_right_arm = [1280, 720]  # 工作模式
+    args.task = TASK_LIST[0]["task"]
 
     vla = GalbotVLAAuto(args)
 
