@@ -3,8 +3,8 @@
 启动后在终端输入数字切换任务，无需重启：
   1 - 升降取垃圾袋
   2 - 桌面物品清理
-  3 - 盖盖子
-  4 - 抹布清理
+  3 - 抹布清理
+  4 - 提起袋子
   s - 停止当前推理
   q - 退出程序
 """
@@ -49,13 +49,13 @@ TASKS = {
         "need_init_pose": False,
     },
     "3": {
-        "name": "盖盖子",
-        "task": "Close the box and put it into the bag.",
+        "name": "抹布清理",
+        "task": "Sweep the remaining trash on the table into the white basin, then put it into the bag.",
         "need_init_pose": False,
     },
     "4": {
-        "name": "抹布清理",
-        "task": "Sweep the remaining trash on the table into the white basin, then put it into the bag.",
+        "name": "提起袋子",
+        "task": "Lift up the bag.",
         "need_init_pose": False,
     },
 }
@@ -420,8 +420,8 @@ def keyboard_listener(vla: GalbotVLAClearTable, args: Args):
     print("清理桌面交互式推理 - 输入数字切换任务")
     print("  1 - 升降取垃圾袋   (含复位)")
     print("  2 - 桌面物品清理   (不复位)")
-    print("  3 - 盖盖子         (不复位)")
-    print("  4 - 抹布清理       (不复位)")
+    print("  3 - 抹布清理       (不复位)")
+    print("  4 - 提起袋子       (不复位)")
     print("  5 - 仅复位         (只复位不推理)")
     print("  s - 停止           q - 退出")
     print("=" * 60 + "\n")

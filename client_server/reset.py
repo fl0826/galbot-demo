@@ -1,9 +1,11 @@
 """
 独立复位脚本 - 把机器人移动到初始位姿后退出
 用法：
-  python reset.py              # 默认用桌面位姿 (stand)
-  python reset.py --pose floor # 用地面/垃圾袋位姿 (zhiyuan_pick_trash.json)
-  python reset.py --pose table # 用桌面位姿 (zhiyuan_pick_trash_stand.json)
+  python reset.py                    # 默认用桌面位姿 (stand)
+  python reset.py --pose floor       # 地面/垃圾袋 zhiyuan_pick_trash.json
+  python reset.py --pose table       # 桌面       zhiyuan_pick_trash_stand.json
+  python reset.py --pose tall        # 提袋后位姿 zhiyuan_pick_trash_tall.json
+  python reset.py --pose tall_open   # 张开位姿   zhiyuan_pick_trash_tall_open.json
   python reset.py --pose-file config/init_pose/xxx.json   # 自定义位姿文件
 """
 import sys
@@ -25,8 +27,10 @@ import time
 
 # 预设位姿文件
 POSE_PRESETS = {
-    "floor": "config/init_pose/zhiyuan_pick_trash.json",        # 地面 / 垃圾袋
-    "table": "config/init_pose/zhiyuan_pick_trash_stand.json",  # 桌面
+    "floor": "config/init_pose/zhiyuan_pick_trash.json",             # 地面 / 垃圾袋
+    "table": "config/init_pose/zhiyuan_pick_trash_stand.json",       # 桌面
+    "tall": "config/init_pose/zhiyuan_pick_trash_tall.json",         # 提完袋子后
+    "tall_open": "config/init_pose/zhiyuan_pick_trash_tall_open.json",  # 张开
 }
 
 
@@ -40,7 +44,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="机器人复位脚本")
     parser.add_argument("--pose", choices=POSE_PRESETS.keys(), default="table",
-                        help="位姿预设: floor=地面/垃圾袋, table=桌面 (默认: table)")
+                        help="位姿预设: floor=地面/垃圾袋, table=桌面, tall=提袋后, tall_open=张开 (默认: table)")
     parser.add_argument("--pose-file", default=None,
                         help="自定义位姿文件路径（覆盖 --pose）")
     cli_args = parser.parse_args()
@@ -58,11 +62,22 @@ if __name__ == "__main__":
     tool_shutdown = ShutdownTool()
     tool_shutdown.on_shutdown(galbot.shutdown)
 
-    # 等待传感器就绪
+    # 等待传感器就绪（轮询代替固定 sleep）
     print("[reset] 等待传感器就绪...")
-    time.sleep(3)
+    t0 = time.time()
+    timeout = 5.0  # 最多等 5 秒
+    while time.time() - t0 < timeout:
+        joint_ok = galbot.galbot_interface._joint_sensor_vla is not None
+        pose_ok = len(galbot.galbot_interface.pose_buffer) >= 2
+        chassis_ok = (
+            galbot.galbot_interface.last_chassis_pos is not None
+            or args.enable_chassis <= 0
+        )
+        if joint_ok and pose_ok and chassis_ok:
+            break
+        time.sleep(0.05)
 
-    print("[reset] 开始复位...")
+    print(f"[reset] 传感器就绪 (耗时 {time.time() - t0:.2f}s)，开始复位...")
     galbot.move_to_init_pose_wholebody()
 
     if galbot.error_imformation:

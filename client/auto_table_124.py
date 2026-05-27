@@ -1,7 +1,7 @@
 """
-清理桌面全自动推理脚本（仅3个任务：1+2+4，跳过盖盖子）
+清理桌面全自动推理脚本（4个任务）
 启动后从任务1开始，按 action delta 自动判断任务完成并切换：
-  pick_bag → bag_large_items → sweep_trash
+  pick_bag → bag_large_items → sweep_trash → lift_bag
 全部完成后自动退出。
 
 判定逻辑：连续 IDLE_FRAMES 次推理满足 (ARMS_max < IDLE_ARMS_THR) AND (LEG_max < IDLE_LEG_THR)
@@ -57,6 +57,12 @@ TASK_LIST = [
         "name": "sweep_trash",
         "label": "抹布清理",
         "task": "Sweep the remaining trash on the table into the white basin, then put it into the bag.",
+        "need_init_pose": False,
+    },
+    {
+        "name": "lift_bag",
+        "label": "提起袋子",
+        "task": "Lift up the bag.",
         "need_init_pose": False,
     },
 ]
@@ -352,7 +358,7 @@ class GalbotVLAAuto:
 def auto_run_all(vla: GalbotVLAAuto, args: Args):
     """依次执行 TASK_LIST 中所有任务，自动切换"""
     print("\n" + "=" * 60)
-    print("清理桌面全自动推理（跳过盖盖子）")
+    print("清理桌面全自动推理")
     print(f"任务序列: " + " → ".join(t["label"] for t in TASK_LIST))
     print(f"判定阈值: ARMS<{IDLE_ARMS_THR}, LEG<{IDLE_LEG_THR}, 连续{IDLE_FRAMES}次")
     print("Ctrl+C 中断")
@@ -402,7 +408,7 @@ if __name__ == "__main__":
             if isinstance(handler, logging.StreamHandler) and not isinstance(handler, logging.FileHandler):
                 handler.setLevel(logging.ERROR)
 
-    parser = argparse.ArgumentParser(description="清理桌面全自动推理（跳过盖盖子）")
+    parser = argparse.ArgumentParser(description="清理桌面全自动推理")
     parser.add_argument("--model-host", default=None, help="模型服务器IP（不传则用args.py中的配置）")
     cli_args = parser.parse_args()
 

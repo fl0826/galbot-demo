@@ -581,12 +581,12 @@ TASK_MAP = {
         "task": "Put the large objects on the table into the bag.",
         "need_init_pose": False,
     },
-    "close_box": {
-        "task": "Close the box and put it into the bag.",
-        "need_init_pose": False,
-    },
     "sweep_trash": {
         "task": "Sweep the remaining trash on the table into the white basin, then put it into the bag.",
+        "need_init_pose": False,
+    },
+    "lift_bag": {
+        "task": "Lift up the bag.",
         "need_init_pose": False,
     }
 }
@@ -667,14 +667,14 @@ def api_bag_large_items():
     return _start_task("bag_large_items", "桌面物品清理")
 
 
-@app.route("/api/close_box", methods=["POST"])
-def api_close_box():
-    return _start_task("close_box", "盖盖子")
-
-
 @app.route("/api/sweep_trash", methods=["POST"])
 def api_sweep_trash():
     return _start_task("sweep_trash", "抹布清理")
+
+
+@app.route("/api/lift_bag", methods=["POST"])
+def api_lift_bag():
+    return _start_task("lift_bag", "提起袋子")
 
 
 @app.route("/api/stop", methods=["POST"])
@@ -684,9 +684,8 @@ def api_stop():
     return _ok(msg="停止信号已发送")
 
 
-@app.route("/api/reset", methods=["POST"])
-def api_reset():
-    """仅复位，不推理"""
+def _do_reset(pose_file: str):
+    """通用复位逻辑：先停推理 → 切位姿文件 → move_to_init_pose"""
     global _task_thread
     # 先停掉当前任务
     if _vla:
@@ -695,11 +694,32 @@ def api_reset():
         _task_thread.join(timeout=10)
     # 执行复位
     _args_global.has_init_action = True
+    _args_global.init_pose_file = pose_file
     _vla.args = copy.deepcopy(_args_global)
     _vla.galbot.args = _vla.args
     _vla.galbot.galbot_interface.args = _vla.args
     _vla.galbot.move_to_init_pose_wholebody()
-    return _ok(msg="复位完成")
+
+
+@app.route("/api/reset", methods=["POST"])
+def api_reset():
+    """复位到桌面默认位姿 (zhiyuan_pick_trash_stand.json)"""
+    _do_reset("config/init_pose/zhiyuan_pick_trash_stand.json")
+    return _ok(msg="复位完成（桌面位姿）")
+
+
+@app.route("/api/reset_lift_bag", methods=["POST"])
+def api_reset_lift_bag():
+    """复位到提袋后位姿 (zhiyuan_pick_trash_tall.json)"""
+    _do_reset("config/init_pose/zhiyuan_pick_trash_tall.json")
+    return _ok(msg="复位完成（提袋后位姿）")
+
+
+@app.route("/api/reset_lift_bag_open", methods=["POST"])
+def api_reset_lift_bag_open():
+    """复位到张开位姿 (zhiyuan_pick_trash_tall_open.json)"""
+    _do_reset("config/init_pose/zhiyuan_pick_trash_tall_open.json")
+    return _ok(msg="复位完成（张开位姿）")
 
 
 @app.route("/api/status", methods=["GET"])
@@ -751,10 +771,12 @@ if __name__ == "__main__":
     print(
         f"[API]    桌面物品清理: POST http://localhost:{SERVER_PORT}/api/bag_large_items"
     )
-    print(f"[API]    盖盖子:       POST http://localhost:{SERVER_PORT}/api/close_box")
     print(f"[API]    抹布清理:     POST http://localhost:{SERVER_PORT}/api/sweep_trash")
-    print(f"[API]    停止任务:     POST http://localhost:{SERVER_PORT}/api/stop")
-    print(f"[API]    仅复位:       POST http://localhost:{SERVER_PORT}/api/reset")
+    print(f"[API]    提起袋子:     POST http://localhost:{SERVER_PORT}/api/lift_bag")
+    print(f"[API]    停止任务:        POST http://localhost:{SERVER_PORT}/api/stop")
+    print(f"[API]    仅复位(桌面):    POST http://localhost:{SERVER_PORT}/api/reset")
+    print(f"[API]    复位(提袋后):    POST http://localhost:{SERVER_PORT}/api/reset_lift_bag")
+    print(f"[API]    复位(张开):      POST http://localhost:{SERVER_PORT}/api/reset_lift_bag_open")
     print(f"[API]    任务状态:     GET  http://localhost:{SERVER_PORT}/api/status")
     print(f"[API]    健康检查:     GET  http://localhost:{SERVER_PORT}/api/health")
     print("=" * 60)
