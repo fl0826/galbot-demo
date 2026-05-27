@@ -422,7 +422,9 @@ def keyboard_listener(vla: GalbotVLAClearTable, args: Args):
     print("  2 - 桌面物品清理   (不复位)")
     print("  3 - 抹布清理       (不复位)")
     print("  4 - 提起袋子       (不复位)")
-    print("  5 - 仅复位         (只复位不推理)")
+    print("  5 - 仅复位(桌面)   stand")
+    print("  6 - 仅复位(提袋后) tall")
+    print("  7 - 仅复位(张开)   tall_open")
     print("  s - 停止           q - 退出")
     print("=" * 60 + "\n")
 
@@ -471,16 +473,23 @@ def keyboard_listener(vla: GalbotVLAClearTable, args: Args):
             )
             task_thread.start()
 
-        elif cmd == "5":
-            print("执行复位...")
+        elif cmd in ("5", "6", "7"):
+            pose_map = {
+                "5": ("config/init_pose/zhiyuan_pick_trash_stand.json", "桌面"),
+                "6": ("config/init_pose/zhiyuan_pick_trash_tall.json", "提袋后"),
+                "7": ("config/init_pose/zhiyuan_pick_trash_tall_open.json", "张开"),
+            }
+            pose_file, pose_label = pose_map[cmd]
+            print(f"执行复位（{pose_label}）...")
             # 先停止当前推理
             vla.shutdown()
             if task_thread and task_thread.is_alive():
                 task_thread.join(timeout=5)
             time.sleep(0.3)
 
-            # 只复位不推理
+            # 切位姿文件 + 复位
             args.has_init_action = True
+            args.init_pose_file = pose_file
             vla.args = copy.deepcopy(args)
             vla.galbot.args = vla.args
             vla.galbot.galbot_interface.args = vla.args
