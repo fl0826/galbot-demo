@@ -558,6 +558,7 @@ MODEL_PORT = 6686  # 整理桌面模型端口
 
 _args_global = Args()
 _args_global.init_pose_file = "config/init_pose/zhiyuan_pick_trash_stand.json"
+_args_global.blocking = False
 # 工作模式：双手腕相机用 1280x720
 _args_global.raw_image_size_left_arm = [1280, 720]
 _args_global.raw_image_size_right_arm = [1280, 720]
@@ -775,8 +776,8 @@ if __name__ == "__main__":
     print(f"[API]    提起袋子:     POST http://localhost:{SERVER_PORT}/api/lift_bag")
     print(f"[API]    停止任务:        POST http://localhost:{SERVER_PORT}/api/stop")
     print(f"[API]    仅复位(桌面):    POST http://localhost:{SERVER_PORT}/api/reset")
-    print(f"[API]    复位(提袋后):    POST http://localhost:{SERVER_PORT}/api/reset_lift_bag")
-    print(f"[API]    复位(张开):      POST http://localhost:{SERVER_PORT}/api/reset_lift_bag_open")
+    print(f"[API]    复位(提袋后上升):    POST http://localhost:{SERVER_PORT}/api/reset_lift_bag")
+    print(f"[API]    复位(夹爪张开):      POST http://localhost:{SERVER_PORT}/api/reset_lift_bag_open")
     print(f"[API]    任务状态:     GET  http://localhost:{SERVER_PORT}/api/status")
     print(f"[API]    健康检查:     GET  http://localhost:{SERVER_PORT}/api/health")
     print("=" * 60)
