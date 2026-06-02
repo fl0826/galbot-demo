@@ -8,6 +8,7 @@
   s - 停止当前推理
   q - 退出程序
 """
+
 import sys
 import os
 import ctypes
@@ -36,7 +37,14 @@ import numpy as np
 import copy
 
 
-# ==================== 任务定义 ====================
+# ==================== 清理桌面任务专用参数（写死，不依赖 args.py 默认值）====================
+MODEL_PORT = 6686
+INIT_POSE_FILE_STAND = "config/init_pose/zhiyuan_pick_trash_stand.json"
+INIT_POSE_FILE_TALL = "config/init_pose/zhiyuan_pick_trash_tall.json"
+INIT_POSE_FILE_TALL_OPEN = "config/init_pose/zhiyuan_pick_trash_tall_open.json"
+RAW_IMAGE_SIZE_LEFT_ARM = [1280, 720]
+RAW_IMAGE_SIZE_RIGHT_ARM = [1280, 720]
+
 TASKS = {
     "1": {
         "name": "升降取垃圾袋",
@@ -425,6 +433,7 @@ def keyboard_listener(vla: GalbotVLAClearTable, args: Args):
     print("  5 - 仅复位(桌面)   stand")
     print("  6 - 仅复位(提袋后) tall")
     print("  7 - 仅复位(张开)   tall_open")
+    print("  8 - 松爪           open_gripper")
     print("  s - 停止           q - 退出")
     print("=" * 60 + "\n")
 
@@ -496,6 +505,40 @@ def keyboard_listener(vla: GalbotVLAClearTable, args: Args):
             vla.galbot.move_to_init_pose_wholebody()
             print("复位完成")
 
+        elif cmd == "8":
+            print("松爪（保持其他关节不变）...")
+            # 先停止当前推理
+            vla.shutdown()
+            if task_thread and task_thread.is_alive():
+                task_thread.join(timeout=5)
+            time.sleep(0.3)
+
+            galbot = vla.galbot
+            galbot.shutdown_event.clear()
+            galbot.error_imformation = ""
+            vla.shutdown_event.clear()
+
+            if (
+                galbot.galbot_interface._joint_sensor_vla is None
+                or len(galbot.galbot_interface.pose_buffer) < 2
+            ):
+                print("传感器未就绪")
+            else:
+                cur = list(galbot.galbot_interface.pose_buffer[1])
+                if len(cur) >= 26:
+                    target_pose_23 = list(cur[0:23])
+                    target_pose_23[14] = 0.1  # 左爪张开
+                    target_pose_23[22] = 0.1  # 右爪张开
+                    chassis = list(cur[23:26])
+                    aim_pos = np.array([4] + target_pose_23 + chassis).reshape(-1, 1)
+                    galbot.set_wholebody_angle_asynchronous(aim_pos, 0.03, 0.004)
+                    if galbot.error_imformation:
+                        print(f"松爪失败: {galbot.error_imformation}")
+                    else:
+                        print("松爪完成")
+                else:
+                    print(f"pose_buffer 维度异常: {len(cur)}")
+
         else:
             pass
 
@@ -509,21 +552,26 @@ if __name__ == "__main__":
     _logger = LoggerManager.get_logger()
     for listener in LoggerManager._queue_listeners.values():
         for handler in listener.handlers:
-            if isinstance(handler, logging.StreamHandler) and not isinstance(handler, logging.FileHandler):
+            if isinstance(handler, logging.StreamHandler) and not isinstance(
+                handler, logging.FileHandler
+            ):
                 handler.setLevel(logging.ERROR)
 
     parser = argparse.ArgumentParser(description="清理桌面交互式推理")
-    parser.add_argument("--model-host", default=None, help="模型服务器IP（不传则用args.py中的配置）")
-    parser.add_argument("--model-port", type=int, default=None, help="模型端口（不传则用args.py中的配置）")
+    parser.add_argument(
+        "--model-host", default=None, help="模型服务器IP（不传则用args.py中的配置）"
+    )
     cli_args = parser.parse_args()
 
     args = Args()
     if cli_args.model_host is not None:
         args.host = [cli_args.model_host]
-    if cli_args.model_port is not None:
-        args.port = [cli_args.model_port]
-    args.task = TASKS["1"]["task"]  # 默认任务1
-    args.init_pose_file = "config/init_pose/zhiyuan_pick_trash_stand.json"
+
+    args.port = [MODEL_PORT]
+    args.task = TASKS["1"]["task"]
+    args.init_pose_file = INIT_POSE_FILE_STAND
+    args.raw_image_size_left_arm = RAW_IMAGE_SIZE_LEFT_ARM
+    args.raw_image_size_right_arm = RAW_IMAGE_SIZE_RIGHT_ARM
 
     vla = GalbotVLAClearTable(args)
 

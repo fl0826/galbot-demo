@@ -33,8 +33,12 @@ import numpy as np
 import copy
 
 
+# ==================== 打扫地面任务专用参数（写死，不依赖 args.py 默认值）====================
 TASK_PROMPT = "Pick up all the trash on the ground one by one and put it into the trash can until there is no trash left on the ground."
 INIT_POSE_FILE = "config/init_pose/zhiyuan_pick_trash.json"
+MODEL_PORT = 6688
+RAW_IMAGE_SIZE_LEFT_ARM = [640, 360]
+RAW_IMAGE_SIZE_RIGHT_ARM = [640, 360]
 
 
 class GalbotVLACleanFloor:
@@ -504,12 +508,12 @@ if __name__ == "__main__":
     args = Args()
     if cli_args.model_host is not None:
         args.host = [cli_args.model_host]
-    # 地面专用参数（写死，不再依赖 args.py 默认值）
-    args.port = [6688]
+    
+    args.port = [MODEL_PORT]
     args.task = TASK_PROMPT
     args.init_pose_file = INIT_POSE_FILE
-    args.raw_image_size_left_arm = [640, 360]   # 数采模式
-    args.raw_image_size_right_arm = [640, 360]  # 数采模式
+    args.raw_image_size_left_arm = RAW_IMAGE_SIZE_LEFT_ARM
+    args.raw_image_size_right_arm = RAW_IMAGE_SIZE_RIGHT_ARM
 
     vla = GalbotVLACleanFloor(args)
 

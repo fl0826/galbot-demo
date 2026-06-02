@@ -25,29 +25,24 @@ class Args:
     #   - init_pose     : meta/init_pose.json → "init_pose" (23-dim wire layout)
     # Only consumed when input_source == "general".
     # ==========================================================================
-    
+
     # 垃圾袋
     # task : str = "Put a garbage bag in the trash can."
 
     # 桌面
-    # task : str = "Pick up the bag and place it on the table."
+    task: str = "Pick up the bag and place it on the table."
     # task : str = "Put the large objects on the table into the bag."
-    # task : str = "Close the box and put it into the bag."
-    #  task : str = "Sweep the remaining trash on the table into the white basin, then put it into the bag."
-    
-    # 地面
-    # task : str = "Pick up all the trash on the ground one by one and put it into the trash can until there is no trash left on the ground."
+    # task : str = "Sweep the remaining trash on the table into the white basin, then put it into the bag."
+    # task : str = "Lift up the bag."
 
-    task : str = "Pick up the trash can."
+    # 地面
     # task : str = "Put the garbage on the ground one by one into the trash can until there is no more garbage on the ground."
 
-
-   
     task_images: List[str] = []
     # Path (relative to project root) to a datacook init_pose.json artifact.
     # "" means "not set"; required in general mode.  See config/init_pose/.
     # init_pose_file: str = "config/init_pose/zhiyuan_pick_trash.json"          # 地面 垃圾袋
-    init_pose_file: str = "config/init_pose/zhiyuan_pick_trash_stand.json"      # 桌面
+    init_pose_file: str = "config/init_pose/zhiyuan_pick_trash_stand.json"  # 桌面
 
     # ==========================================================================
     # Region B — grocery legacy prompt/pose builder
@@ -59,9 +54,9 @@ class Args:
     prompt_type: str = "shelf_stock"
     object_name: List[str] = ["dongfangshuyeqingganpuer"]
     object_location: List[int] = [1, 1]
-    object_location_on_shelf: str = 'left'  # "left" | "middle" | "right"
-    hand_used: str = 'left'                  # "left" | "right"
-    shelf_location = ['front']               # "left" | "front" | "right"
+    object_location_on_shelf: str = "left"  # "left" | "middle" | "right"
+    hand_used: str = "left"  # "left" | "right"
+    shelf_location = ["front"]  # "left" | "front" | "right"
     shelf_type: List[int] = [3]
     config_path: str = "configs_golf"
 
@@ -70,9 +65,9 @@ class Args:
     # ==========================================================================
     # host = ["10.0.100.34"]
     host = ["192.168.1.99"]
-    # port=[6686]         # 桌面
-    port=[6688]       # 地面
-    # port=[6687]       # 垃圾袋
+    port = [6686]  # 桌面
+    # port = [6688]  # 地面
+    # port=[6687]    # 垃圾袋
 
     # None → fall back to init_pose[14] / init_pose[22] (i.e. whatever the
     # Region A init_pose or Region B config file carried).  Non-empty list
@@ -90,12 +85,12 @@ class Args:
     enable_takeover: float = 1.0
     network_latency_tolerance: float = 60.0  # seconds
 
-    target_image_size_head:      List[int] = [224, 224]   # [横向, 纵向]
-    target_image_size_left_arm:  List[int] = [224, 224]
+    target_image_size_head: List[int] = [224, 224]  # [横向, 纵向]
+    target_image_size_left_arm: List[int] = [224, 224]
     target_image_size_right_arm: List[int] = [224, 224]
-    raw_image_size_head:      List[int] = [1280, 960]
+    raw_image_size_head: List[int] = [1280, 960]
 
-    raw_image_size_left_arm:  List[int] = [1280, 720]   # 工作用大的
+    raw_image_size_left_arm: List[int] = [1280, 720]  # 工作用大的
     raw_image_size_right_arm: List[int] = [1280, 720]
     # raw_image_size_left_arm:  List[int] = [640, 360]  # 数采用小的
     # raw_image_size_right_arm: List[int] = [640, 360]
@@ -110,7 +105,9 @@ class Args:
     traj_filtering: float = -1.0
     para_chassis_p: List[float] = [1.0, 1.0, 1.0]
 
-    vla_type: str = "VLA"  # "VLA" | "VLA_training_time_RTC" | "PlanEndEffector_Vla_WeightingPosByAccCtrl"
+    vla_type: str = (
+        "VLA"  # "VLA" | "VLA_training_time_RTC" | "PlanEndEffector_Vla_WeightingPosByAccCtrl"
+    )
     control_mode: str = "joint"  # "eef" | "joint"
     has_init_action: bool = True
     auto_stop: bool = False

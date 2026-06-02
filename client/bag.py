@@ -6,6 +6,7 @@
   s - 停止当前推理
   q - 退出程序
 """
+
 import sys
 import os
 
@@ -33,8 +34,12 @@ import numpy as np
 import copy
 
 
+# ==================== 套垃圾袋任务专用参数（写死，不依赖 args.py 默认值）====================
 TASK_PROMPT = "Put a garbage bag in the trash can."
 INIT_POSE_FILE = "config/init_pose/zhiyuan_pick_trash.json"
+MODEL_PORT = 6687
+RAW_IMAGE_SIZE_LEFT_ARM = [1280, 720]
+RAW_IMAGE_SIZE_RIGHT_ARM = [1280, 720]
 
 
 class GalbotVLAPutGarbageBag:
@@ -494,11 +499,15 @@ if __name__ == "__main__":
     _logger = LoggerManager.get_logger()
     for listener in LoggerManager._queue_listeners.values():
         for handler in listener.handlers:
-            if isinstance(handler, logging.StreamHandler) and not isinstance(handler, logging.FileHandler):
+            if isinstance(handler, logging.StreamHandler) and not isinstance(
+                handler, logging.FileHandler
+            ):
                 handler.setLevel(logging.ERROR)
 
     parser = argparse.ArgumentParser(description="套垃圾袋交互式推理")
-    parser.add_argument("--model-host", default=None, help="模型服务器IP（不传则用args.py中的配置）")
+    parser.add_argument(
+        "--model-host", default=None, help="模型服务器IP（不传则用args.py中的配置）"
+    )
     cli_args = parser.parse_args()
 
     args = Args()
@@ -508,8 +517,8 @@ if __name__ == "__main__":
     args.port = [6687]
     args.task = TASK_PROMPT
     args.init_pose_file = INIT_POSE_FILE
-    args.raw_image_size_left_arm = [1280, 720]   # 工作模式
-    args.raw_image_size_right_arm = [1280, 720]  # 工作模式
+    args.raw_image_size_left_arm = RAW_IMAGE_SIZE_LEFT_ARM  # 工作模式
+    args.raw_image_size_right_arm = RAW_IMAGE_SIZE_RIGHT_ARM  # 工作模式
 
     vla = GalbotVLAPutGarbageBag(args)
 
