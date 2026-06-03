@@ -16,7 +16,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional
 
 
@@ -29,24 +29,39 @@ class ApiAction:
     path: str
     group: str
     note: str = ""
+    body: dict = field(default_factory=dict)
 
 
 ACTIONS = [
-    ApiAction("1", "套垃圾袋：正常启动（含复位）", "POST", 9053, "/api/put_garbage_bag", "套垃圾袋"),
-    ApiAction("2", "套垃圾袋：断点续推（跳过复位）", "POST", 9053, "/api/put_garbage_bag_resume", "套垃圾袋"),
-    ApiAction("3", "套垃圾袋：停止", "POST", 9053, "/api/stop", "套垃圾袋"),
-    ApiAction("4", "打扫地面：正常启动（不含复位）", "POST", 9051, "/api/clean_floor", "打扫地面"),
-    ApiAction("5", "打扫地面：停止", "POST", 9051, "/api/stop", "打扫地面"),
-    ApiAction("6", "打扫地面：仅复位", "POST", 9051, "/api/reset", "打扫地面"),
-    ApiAction("7", "清理桌面：1. 升降取垃圾袋", "POST", 9052, "/api/pick_bag", "清理桌面"),
-    ApiAction("8", "清理桌面：2. 复位", "POST", 9052, "/api/reset", "清理桌面"),
-    ApiAction("9", "清理桌面：3. 桌面物品清理", "POST", 9052, "/api/bag_large_items", "清理桌面"),
-    ApiAction("10", "清理桌面：4. 抹布清理", "POST", 9052, "/api/sweep_trash", "清理桌面"),
-    ApiAction("11", "清理桌面：5. 提起袋子（不复位）", "POST", 9052, "/api/lift_bag", "清理桌面"),
-    ApiAction("12", "清理桌面：6. 停止当前任务", "POST", 9052, "/api/stop", "清理桌面"),
-    ApiAction("13", "清理桌面：7. 提袋后复位", "POST", 9052, "/api/reset_lift_bag", "清理桌面"),
-    ApiAction("14", "清理桌面：8. 夹爪张开复位", "POST", 9052, "/api/reset_lift_bag_open", "清理桌面"),
-    ApiAction("15", "清理桌面：9. 松爪", "POST", 9052, "/api/open_gripper", "清理桌面"),
+    # ===== 套垃圾袋 =====
+    ApiAction("1",  "套垃圾袋：正常启动（含复位）",       "POST", 9053, "/api/put_garbage_bag",        "套垃圾袋"),
+    ApiAction("2",  "套垃圾袋：断点续推（跳过复位）",     "POST", 9053, "/api/put_garbage_bag_resume",  "套垃圾袋"),
+    ApiAction("3",  "套垃圾袋：停止",                     "POST", 9053, "/api/stop",                   "套垃圾袋"),
+
+    # ===== 打扫地面 =====
+    ApiAction("4",  "打扫地面：启动推理（不复位）",        "POST", 9051, "/api/clean_floor",             "打扫地面"),
+    ApiAction("5",  "打扫地面：停止",                     "POST", 9051, "/api/stop",                   "打扫地面"),
+    ApiAction("6",  "打扫地面：仅复位",                   "POST", 9051, "/api/reset",                  "打扫地面"),
+
+    # ===== 清理桌面 - 推理 =====
+    ApiAction("7",  "清理桌面：升降取垃圾袋（含复位）",   "POST", 9052, "/api/pick_bag",               "清理桌面-推理"),
+    ApiAction("8",  "清理桌面：桌面物品清理",             "POST", 9052, "/api/bag_large_items",        "清理桌面-推理"),
+    ApiAction("9",  "清理桌面：抹布清理",                 "POST", 9052, "/api/sweep_trash",            "清理桌面-推理"),
+    ApiAction("10", "清理桌面：提起袋子",                 "POST", 9052, "/api/lift_bag",               "清理桌面-推理"),
+    ApiAction("11", "清理桌面：停止",                     "POST", 9052, "/api/stop",                   "清理桌面-推理"),
+
+    # ===== 清理桌面 - 复位 =====
+    ApiAction("12", "清理桌面：复位（桌面默认）",          "POST", 9052, "/api/reset",                  "清理桌面-复位"),
+
+    # ===== 清理桌面 - 夹爪 =====
+    ApiAction("13", "清理桌面：松爪",                     "POST", 9052, "/api/open_gripper",           "清理桌面-夹爪"),
+    ApiAction("14", "清理桌面：闭合夹爪",                 "POST", 9052, "/api/close_gripper",          "清理桌面-夹爪"),
+
+    # ===== 清理桌面 - Replay =====
+    ApiAction("15", "清理桌面：Replay",
+              "POST", 9052, "/api/replay_downsample",  "清理桌面-Replay",
+              note="需带 parquet_path，step 可选(默认15)",
+              body={"parquet_path": "/home/galbot/vla_client/episode_000000.parquet", "step": 15}),
 ]
 
 ACTION_BY_KEY = {action.key: action for action in ACTIONS}
@@ -56,10 +71,10 @@ def build_url(host: str, action: ApiAction) -> str:
     return f"http://{host}:{action.port}{action.path}"
 
 
-def post_json(url: str, timeout: float) -> tuple[int, str]:
+def post_json(url: str, timeout: float, body: dict | None = None) -> tuple[int, str]:
     request = urllib.request.Request(
         url,
-        data=b"",
+        data=json.dumps(body or {}).encode("utf-8"),
         method="POST",
         headers={"Content-Type": "application/json"},
     )
@@ -82,9 +97,11 @@ def call_action(host: str, action: ApiAction, timeout: float) -> None:
     url = build_url(host, action)
     print(f"\n>>> {action.title}")
     print(f">>> {action.method} {url}")
+    if action.body:
+        print(f">>> body: {json.dumps(action.body, ensure_ascii=False)}")
     start = time.perf_counter()
     try:
-        status, body = post_json(url, timeout)
+        status, body = post_json(url, timeout, action.body)
     except urllib.error.HTTPError as exc:
         body = exc.read().decode("utf-8", errors="replace")
         print(f"<<< HTTP {exc.code} ({time.perf_counter() - start:.2f}s)")
@@ -165,7 +182,7 @@ def main() -> int:
 
         action = ACTION_BY_KEY.get(choice)
         if action is None:
-            print(f"未知输入：{choice}。请输入 1-{len(ACTIONS)}，或 m/h/q。")
+            print(f"未知输入：{choice}。请输入 1-{len(ACTIONS)}，或 m/h/q。")            
             continue
 
         call_action(host, action, timeout)
