@@ -611,7 +611,16 @@ def _wait_replay_sensor_ready(galbot, timeout=5.0):
     return False
 
 
-def _run_replay_downsample(parquet_path: str, fps=30, speed=1.0, step=15, start_frame=0, end_frame=None, move_time=4):
+def _run_replay_downsample(
+    parquet_path: str,
+    fps=30,
+    speed=1.0,
+    step=15,
+    start_frame=0,
+    end_frame=None,
+    move_time=4,
+    no_reset=True,
+):
     """
     降采样 Replay：每隔 step 帧取一个关键帧，一次性发给底层，底层自己插值执行。
     和 reset 复位机制完全相同，丝滑无抖动。
@@ -642,16 +651,24 @@ def _run_replay_downsample(parquet_path: str, fps=30, speed=1.0, step=15, start_
 
         n = len(df)
         end_frame = n if (end_frame is None or end_frame > n) else end_frame
-        actions = list(df["action"].iloc[max(0, start_frame):end_frame])
+        actions = list(df["action"].iloc[max(0, start_frame) : end_frame])
         if not actions:
             raise ValueError("没有可回放的帧")
 
-        # 停止当前任务，清除状态
-        if _vla:
-            _vla.shutdown()
-        time.sleep(0.3)
-
         galbot = _vla.galbot
+
+        # 轮询确认底层已停（外层接口已调用 shutdown，这里只需确认底层状态）
+        t0 = time.perf_counter()
+        while True:
+            res = galbot.request_vla_service("stop")
+            logger.info(f"[replay] 等待底层停止: {res}")
+            if res == "stop":
+                break
+            time.sleep(0.1)
+            if time.perf_counter() - t0 > 3:
+                logger.warning("[replay] 等待底层停止超时，继续尝试")
+                break
+
         galbot.shutdown_event.clear()
         galbot.error_imformation = ""
         _vla.shutdown_event.clear()
@@ -671,34 +688,47 @@ def _run_replay_downsample(parquet_path: str, fps=30, speed=1.0, step=15, start_
 
         logger.info(
             f"[replay] 原始帧数={len(actions)}, 关键帧数={len(keyframes)}, "
-            f"step={step}, key_dt={key_dt:.3f}s, 总时长={total_time:.1f}s"
+            f"step={step}, key_dt={key_dt:.3f}s, 总时长={total_time:.1f}s, no_reset={no_reset}"
         )
 
-        # 复位到第一帧
-        aim = np.array(
-            [move_time] + _action38_to_joints23(keyframes[0]) + list(galbot.galbot_interface.chassis_pos)
-        ).reshape(-1, 1)
-        galbot.set_wholebody_angle_asynchronous(aim, 0.03, 0.004)
-        if galbot.error_imformation:
-            raise RuntimeError(f"复位失败: {galbot.error_imformation}")
+        if no_reset:
+            logger.info(
+                "[replay] 跳过复位，直接开始回放（仅底盘移动，关节保持当前位置）..."
+            )
+        else:
+            logger.info(f"[replay] 复位到第一帧（{move_time}s）...")
+            aim = np.array(
+                [move_time]
+                + _action38_to_joints23(keyframes[0])
+                + list(galbot.galbot_interface.chassis_pos)
+            ).reshape(-1, 1)
+            galbot.set_wholebody_angle_asynchronous(aim, 0.03, 0.004)
+            if galbot.error_imformation:
+                raise RuntimeError(f"复位失败: {galbot.error_imformation}")
+            logger.info("[replay] 复位完成，开始降采样回放...")
 
         # 构造完整 mat：第0列=当前位姿起点，后续列=各关键帧（带时间戳）
         # 一次性发给底层，底层自己平滑插值——和 reset 机制完全一致
         cur = list(galbot.galbot_interface.pose_buffer[1])  # 26维
         n_keys = len(keyframes)
         mat = np.zeros((2 + 26, 1 + n_keys))
-        mat[2:2 + 26, 0] = cur[0:26]   # 第0列：当前位姿起点
+        mat[2 : 2 + 26, 0] = cur[0:26]  # 第0列：当前位姿起点
 
         for j, a in enumerate(keyframes):
             mat[1, 1 + j] = (j + 1) * key_dt
-            mat[2:2 + 23, 1 + j] = _action38_to_joints23(a)
-            mat[2 + 23:2 + 26, 1 + j] = _action38_to_chassis(a)
+            if no_reset:
+                mat[2 : 2 + 23, 1 + j] = cur[0:23]
+            else:
+                mat[2 : 2 + 23, 1 + j] = _action38_to_joints23(a)
+            mat[2 + 23 : 2 + 26, 1 + j] = _action38_to_chassis(a)
 
-        mat[2 + 14, :] *= 1000   # 左爪 m->mm
-        mat[2 + 22, :] *= 1000   # 右爪 m->mm
+        mat[2 + 14, :] *= 1000  # 左爪 m->mm
+        mat[2 + 22, :] *= 1000  # 右爪 m->mm
 
         galbot.embosa_vla_publisher.pub_mat(mat)
-        logger.info(f"[replay] 已发布 {n_keys} 个关键帧，等待执行完成（{total_time:.1f}s）")
+        logger.info(
+            f"[replay] 已发布 {n_keys} 个关键帧，等待执行完成（{total_time:.1f}s）"
+        )
 
         # 等轨迹执行完
         t_end = time.perf_counter() + total_time
@@ -739,7 +769,7 @@ TASK_MAP = {
         "task": "Pick up the bag and place it on the table.",
         "need_init_pose": True,
     },
-        "bag_large_items": {
+    "bag_large_items": {
         "task": "Put the large objects on the table into the bag.",
         "need_init_pose": False,
     },
@@ -750,7 +780,7 @@ TASK_MAP = {
     "lift_bag": {
         "task": "Lift up the bag.",
         "need_init_pose": False,
-    }
+    },
 }
 
 
@@ -841,38 +871,94 @@ def api_lift_bag():
 
 @app.route("/api/stop", methods=["POST"])
 def api_stop():
-    if _vla:
-        _vla.shutdown()
-    return _ok(msg="停止信号已发送")
-
-
-def _do_reset(pose_file: str):
-    """通用复位逻辑：先停推理 → 切位姿文件 → move_to_init_pose"""
+    """停止当前任务（阻塞等待任务线程真正退出）"""
     global _task_thread
-    # 先停掉当前任务
     if _vla:
         _vla.shutdown()
     if _task_thread and _task_thread.is_alive():
         _task_thread.join(timeout=10)
-    # 执行复位
-    _args_global.has_init_action = True
-    _args_global.init_pose_file = pose_file
-    _vla.args = copy.deepcopy(_args_global)
-    _vla.galbot.args = _vla.args
-    _vla.galbot.galbot_interface.args = _vla.args
-    _vla.galbot.move_to_init_pose_wholebody()
+    return _ok(msg="任务已停止")
+
+
+def _run_reset(pose_file: str):
+    global _task_status
+    logger = LoggerManager.get_logger()
+    with _task_lock:
+        _task_status.update(
+            {
+                "running": True,
+                "success": None,
+                "message": "复位执行中...",
+                "start_time": time.time(),
+                "end_time": None,
+            }
+        )
+    try:
+        galbot = _vla.galbot
+        t0 = time.perf_counter()
+        while True:
+            res = galbot.request_vla_service("stop")
+            logger.info(f"[reset] 等待底层停止: {res}")
+            if res == "stop":
+                break
+            time.sleep(0.1)
+            if time.perf_counter() - t0 > 3:
+                logger.warning("[reset] 等待底层停止超时，继续尝试")
+                break
+        time.sleep(0.5)
+        galbot.shutdown_event.clear()
+        galbot.error_imformation = ""
+        _vla.shutdown_event.clear()
+        _args_global.has_init_action = True
+        _args_global.init_pose_file = pose_file
+        _vla.args = copy.deepcopy(_args_global)
+        _vla.galbot.args = _vla.args
+        _vla.galbot.galbot_interface.args = _vla.args
+        _vla.galbot.move_to_init_pose_wholebody()
+        if galbot.error_imformation:
+            raise RuntimeError(galbot.error_imformation)
+        with _task_lock:
+            _task_status.update(
+                {
+                    "running": False,
+                    "success": True,
+                    "message": "复位完成",
+                    "end_time": time.time(),
+                }
+            )
+    except Exception as e:
+        logger.error(f"复位异常: {e}", exc_info=True)
+        with _task_lock:
+            _task_status.update(
+                {
+                    "running": False,
+                    "success": False,
+                    "message": str(e),
+                    "end_time": time.time(),
+                }
+            )
+
+
+def _do_reset(pose_file: str):
+    global _task_thread
+    if _vla:
+        _vla.shutdown()
+    if _task_thread and _task_thread.is_alive():
+        _task_thread.join(timeout=10)
+    _task_thread = threading.Thread(target=_run_reset, args=(pose_file,), daemon=True)
+    _task_thread.start()
 
 
 @app.route("/api/reset", methods=["POST"])
 def api_reset():
-    """复位到桌面默认位姿 (zhiyuan_pick_trash_stand.json)"""
-    _do_reset("config/init_pose/zhiyuan_pick_trash_stand.json")
-    return _ok(msg="复位完成（桌面位姿）")
+    """复位到桌面默认位姿（异步后台执行）"""
+    _do_reset("config/init_pose/zhiyuan_pick_trashstand.json")
+    return _ok(msg="复位任务已启动")
 
 
 @app.route("/api/replay_downsample", methods=["POST"])
 def api_replay_downsample():
-    """降采样 Replay。JSON参数: parquet_path 必填，step 可选（默认15）。"""
+    """降采样 Replay。JSON参数: parquet_path 必填，step 可选（默认15），no_reset 默认true（仅底盘）。"""
     global _task_thread
     body = request.get_json(silent=True) or {}
     parquet_path = body.get("parquet_path") or body.get("parquet")
@@ -886,6 +972,7 @@ def api_replay_downsample():
     end_frame = body.get("end_frame", None)
     end_frame = int(end_frame) if end_frame is not None else None
     move_time = float(body.get("move_time", 4))
+    no_reset = bool(body.get("no_reset", True))
 
     with _task_lock:
         if _task_status["running"]:
@@ -896,7 +983,16 @@ def api_replay_downsample():
 
     _task_thread = threading.Thread(
         target=_run_replay_downsample,
-        args=(parquet_path, fps, speed, step, start_frame, end_frame, move_time),
+        args=(
+            parquet_path,
+            fps,
+            speed,
+            step,
+            start_frame,
+            end_frame,
+            move_time,
+            no_reset,
+        ),
         daemon=True,
     )
     _task_thread.start()
@@ -909,6 +1005,7 @@ def api_replay_downsample():
             "start_frame": start_frame,
             "end_frame": end_frame,
             "move_time": move_time,
+            "no_reset": no_reset,
         },
         msg="Replay降采样任务已启动",
     )
@@ -929,15 +1026,18 @@ def api_open_gripper():
     galbot.error_imformation = ""
     _vla.shutdown_event.clear()
 
-    if galbot.galbot_interface._joint_sensor_vla is None or len(galbot.galbot_interface.pose_buffer) < 2:
+    if (
+        galbot.galbot_interface._joint_sensor_vla is None
+        or len(galbot.galbot_interface.pose_buffer) < 2
+    ):
         return _err("传感器未就绪")
     cur = list(galbot.galbot_interface.pose_buffer[1])
     if len(cur) < 26:
         return _err(f"pose_buffer 维度异常: {len(cur)}")
 
     target_pose_23 = list(cur[0:23])
-    target_pose_23[14] = 0.1   # 左爪张开
-    target_pose_23[22] = 0.1   # 右爪张开
+    target_pose_23[14] = 0.1  # 左爪张开
+    target_pose_23[22] = 0.1  # 右爪张开
     chassis = list(cur[23:26])
 
     aim_pos = np.array([4] + target_pose_23 + chassis).reshape(-1, 1)
@@ -963,15 +1063,18 @@ def api_close_gripper():
     galbot.error_imformation = ""
     _vla.shutdown_event.clear()
 
-    if galbot.galbot_interface._joint_sensor_vla is None or len(galbot.galbot_interface.pose_buffer) < 2:
+    if (
+        galbot.galbot_interface._joint_sensor_vla is None
+        or len(galbot.galbot_interface.pose_buffer) < 2
+    ):
         return _err("传感器未就绪")
     cur = list(galbot.galbot_interface.pose_buffer[1])
     if len(cur) < 26:
         return _err(f"pose_buffer 维度异常: {len(cur)}")
 
     target_pose_23 = list(cur[0:23])
-    target_pose_23[14] = 0.0   # 左爪闭合
-    target_pose_23[22] = 0.0   # 右爪闭合
+    target_pose_23[14] = 0.0  # 左爪闭合
+    target_pose_23[22] = 0.0  # 右爪闭合
     chassis = list(cur[23:26])
 
     aim_pos = np.array([4] + target_pose_23 + chassis).reshape(-1, 1)
@@ -1031,13 +1134,19 @@ if __name__ == "__main__":
     print(
         f"[API]    桌面物品清理: POST http://localhost:{SERVER_PORT}/api/bag_large_items"
     )
-    print(f"[API]    Replay:   POST http://localhost:{SERVER_PORT}/api/replay_downsample")
+    print(
+        f"[API]    Replay:   POST http://localhost:{SERVER_PORT}/api/replay_downsample"
+    )
     print(f"[API]    抹布清理:     POST http://localhost:{SERVER_PORT}/api/sweep_trash")
     print(f"[API]    提起袋子:     POST http://localhost:{SERVER_PORT}/api/lift_bag")
     print(f"[API]    停止任务:        POST http://localhost:{SERVER_PORT}/api/stop")
     print(f"[API]    仅复位(桌面):    POST http://localhost:{SERVER_PORT}/api/reset")
-    print(f"[API]    松爪:          POST http://localhost:{SERVER_PORT}/api/open_gripper")
-    print(f"[API]    夹爪:          POST http://localhost:{SERVER_PORT}/api/close_gripper")
+    print(
+        f"[API]    松爪:          POST http://localhost:{SERVER_PORT}/api/open_gripper"
+    )
+    print(
+        f"[API]    夹爪:          POST http://localhost:{SERVER_PORT}/api/close_gripper"
+    )
     print(f"[API]    任务状态:     GET  http://localhost:{SERVER_PORT}/api/status")
     print(f"[API]    健康检查:     GET  http://localhost:{SERVER_PORT}/api/health")
     print("=" * 60)

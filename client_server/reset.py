@@ -4,10 +4,9 @@
   python reset.py                    # 默认用桌面位姿 (stand)
   python reset.py --pose floor       # 地面/垃圾袋 zhiyuan_pick_trash.json
   python reset.py --pose table       # 桌面       zhiyuan_pick_trash_stand.json
-  python reset.py --pose tall        # 提袋后位姿 zhiyuan_pick_trash_tall.json
-  python reset.py --pose tall_open   # 张开位姿   zhiyuan_pick_trash_tall_open.json
   python reset.py --pose-file config/init_pose/xxx.json   # 自定义位姿文件
 """
+
 import sys
 import os
 
@@ -27,9 +26,9 @@ import time
 
 # 预设位姿文件
 POSE_PRESETS = {
-    "floor": "config/init_pose/zhiyuan_pick_trash.json",             # 地面 / 垃圾袋
-    "table": "config/init_pose/zhiyuan_pick_trash_stand.json",       # 桌面
-    "tall": "config/init_pose/zhiyuan_pick_trash_tall.json",         # 提完袋子后
+    "floor": "config/init_pose/zhiyuan_pick_trash.json",  # 地面 / 垃圾袋
+    "table": "config/init_pose/zhiyuan_pick_trash_stand.json",  # 桌面
+    "tall": "config/init_pose/zhiyuan_pick_trash_tall.json",  # 提完袋子后
     "tall_open": "config/init_pose/zhiyuan_pick_trash_tall_open.json",  # 张开
 }
 
@@ -39,14 +38,21 @@ if __name__ == "__main__":
     LoggerManager.get_logger()
     for listener in LoggerManager._queue_listeners.values():
         for handler in listener.handlers:
-            if isinstance(handler, logging.StreamHandler) and not isinstance(handler, logging.FileHandler):
+            if isinstance(handler, logging.StreamHandler) and not isinstance(
+                handler, logging.FileHandler
+            ):
                 handler.setLevel(logging.ERROR)
 
     parser = argparse.ArgumentParser(description="机器人复位脚本")
-    parser.add_argument("--pose", choices=POSE_PRESETS.keys(), default="table",
-                        help="位姿预设: floor=地面/垃圾袋, table=桌面, tall=提袋后, tall_open=张开 (默认: table)")
-    parser.add_argument("--pose-file", default=None,
-                        help="自定义位姿文件路径（覆盖 --pose）")
+    parser.add_argument(
+        "--pose",
+        choices=POSE_PRESETS.keys(),
+        default="table",
+        help="位姿预设: floor=地面/垃圾袋, table=桌面, tall=提袋后, tall_open=张开 (默认: table)",
+    )
+    parser.add_argument(
+        "--pose-file", default=None, help="自定义位姿文件路径（覆盖 --pose）"
+    )
     cli_args = parser.parse_args()
 
     pose_file = cli_args.pose_file or POSE_PRESETS[cli_args.pose]

@@ -535,11 +535,12 @@ _task_status = {
 MODEL_PORT = 6688  # 打扫地面模型端口
 
 _args_global = Args()
-_args_global.task = "Pick up all the trash on the ground one by one and put it into the trash can until there is no trash left on the ground."
-_args_global.init_pose_file = "config/init_pose/zhiyuan_pick_trash.json"
+_args_global.task = "Put the garbage on the ground one by one into the trash can until there is no more garbage on the ground."
+_args_global.init_pose_file = "config/init_pose/pick_trash_best.json"
 # 数采模式：双手腕相机用 640x360
 _args_global.raw_image_size_left_arm = [640, 360]
 _args_global.raw_image_size_right_arm = [640, 360]
+_args_global.blocking = False
 
 
 def _ok(data=None, msg=""):
@@ -601,27 +602,84 @@ def api_clean_floor():
 
 @app.route("/api/stop", methods=["POST"])
 def api_stop():
-    if _vla:
-        _vla.shutdown()
-    return _ok(msg="停止信号已发送")
-
-
-@app.route("/api/reset", methods=["POST"])
-def api_reset():
-    """仅复位，不推理"""
+    """停止当前任务（阻塞等待任务线程真正退出）"""
     global _task_thread
-    # 先停掉当前任务
     if _vla:
         _vla.shutdown()
     if _task_thread and _task_thread.is_alive():
         _task_thread.join(timeout=10)
-    # 执行复位
-    _args_global.has_init_action = True
-    _vla.args = copy.deepcopy(_args_global)
-    _vla.galbot.args = _vla.args
-    _vla.galbot.galbot_interface.args = _vla.args
-    _vla.galbot.move_to_init_pose_wholebody()
-    return _ok(msg="复位完成")
+    return _ok(msg="任务已停止")
+
+
+def _run_reset():
+    global _task_status
+    logger = LoggerManager.get_logger()
+    with _task_lock:
+        _task_status.update(
+            {
+                "running": True,
+                "success": None,
+                "message": "复位执行中..",
+                "start_time": time.time(),
+                "end_time": None,
+            }
+        )
+    try:
+        galbot = _vla.galbot
+        t0 = time.perf_counter()
+        while True:
+            res = galbot.request_vla_service("stop")
+            logger.info(f"[reset] 等待底层停止: {res}")
+            if res == "stop":
+                break
+            time.sleep(0.1)
+            if time.perf_counter() - t0 > 3:
+                logger.warning("[reset] 等待底层停止超时，继续尝试")
+                break
+        time.sleep(0.5)
+        galbot.shutdown_event.clear()
+        galbot.error_imformation = ""
+        _vla.shutdown_event.clear()
+        _args_global.has_init_action = True
+        _vla.args = copy.deepcopy(_args_global)
+        _vla.galbot.args = _vla.args
+        _vla.galbot.galbot_interface.args = _vla.args
+        _vla.galbot.move_to_init_pose_wholebody()
+        if galbot.error_imformation:
+            raise RuntimeError(galbot.error_imformation)
+        with _task_lock:
+            _task_status.update(
+                {
+                    "running": False,
+                    "success": True,
+                    "message": "复位完成",
+                    "end_time": time.time(),
+                }
+            )
+    except Exception as e:
+        logger.error(f"复位异常: {e}", exc_info=True)
+        with _task_lock:
+            _task_status.update(
+                {
+                    "running": False,
+                    "success": False,
+                    "message": str(e),
+                    "end_time": time.time(),
+                }
+            )
+
+
+@app.route("/api/reset", methods=["POST"])
+def api_reset():
+    """仅复位，不推理（异步后台执行）"""
+    global _task_thread
+    if _vla:
+        _vla.shutdown()
+    if _task_thread and _task_thread.is_alive():
+        _task_thread.join(timeout=10)
+    _task_thread = threading.Thread(target=_run_reset, daemon=True)
+    _task_thread.start()
+    return _ok(msg="复位任务已启动")
 
 
 @app.route("/api/status", methods=["GET"])

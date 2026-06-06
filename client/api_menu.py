@@ -36,32 +36,37 @@ ACTIONS = [
     # ===== 套垃圾袋 =====
     ApiAction("1",  "套垃圾袋：正常启动（含复位）",       "POST", 9053, "/api/put_garbage_bag",        "套垃圾袋"),
     ApiAction("2",  "套垃圾袋：断点续推（跳过复位）",     "POST", 9053, "/api/put_garbage_bag_resume",  "套垃圾袋"),
-    ApiAction("3",  "套垃圾袋：停止",                     "POST", 9053, "/api/stop",                   "套垃圾袋"),
+    ApiAction("3",  "套垃圾袋：仅复位",                   "POST", 9053, "/api/reset",                  "套垃圾袋"),
+    ApiAction("4",  "套垃圾袋：停止",                     "POST", 9053, "/api/stop",                   "套垃圾袋"),
+    ApiAction("5",  "套垃圾袋：Replay",
+              "POST", 9053, "/api/replay_downsample",  "套垃圾袋",
+              note="需带 parquet_path，step 可选(默认15)，no_reset 默认true（仅底盘）",
+              body={"parquet_path": "/home/galbot/vla_client/episode_000000.parquet", "step": 15, "no_reset": True}),
 
     # ===== 打扫地面 =====
-    ApiAction("4",  "打扫地面：启动推理（不复位）",        "POST", 9051, "/api/clean_floor",             "打扫地面"),
-    ApiAction("5",  "打扫地面：停止",                     "POST", 9051, "/api/stop",                   "打扫地面"),
-    ApiAction("6",  "打扫地面：仅复位",                   "POST", 9051, "/api/reset",                  "打扫地面"),
+    ApiAction("6",  "打扫地面：启动推理（不复位）",        "POST", 9051, "/api/clean_floor",             "打扫地面"),
+    ApiAction("7",  "打扫地面：停止",                     "POST", 9051, "/api/stop",                   "打扫地面"),
+    ApiAction("8",  "打扫地面：仅复位",                   "POST", 9051, "/api/reset",                  "打扫地面"),
 
     # ===== 清理桌面 - 推理 =====
-    ApiAction("7",  "清理桌面：升降取垃圾袋（含复位）",   "POST", 9052, "/api/pick_bag",               "清理桌面-推理"),
-    ApiAction("8",  "清理桌面：桌面物品清理",             "POST", 9052, "/api/bag_large_items",        "清理桌面-推理"),
-    ApiAction("9",  "清理桌面：抹布清理",                 "POST", 9052, "/api/sweep_trash",            "清理桌面-推理"),
-    ApiAction("10", "清理桌面：提起袋子",                 "POST", 9052, "/api/lift_bag",               "清理桌面-推理"),
-    ApiAction("11", "清理桌面：停止",                     "POST", 9052, "/api/stop",                   "清理桌面-推理"),
+    ApiAction("9",  "清理桌面：升降取垃圾袋（含复位）",   "POST", 9052, "/api/pick_bag",               "清理桌面-推理"),
+    ApiAction("10", "清理桌面：桌面物品清理",             "POST", 9052, "/api/bag_large_items",        "清理桌面-推理"),
+    ApiAction("11", "清理桌面：抹布清理",                 "POST", 9052, "/api/sweep_trash",            "清理桌面-推理"),
+    ApiAction("12", "清理桌面：提起袋子",                 "POST", 9052, "/api/lift_bag",               "清理桌面-推理"),
+    ApiAction("13", "清理桌面：停止",                     "POST", 9052, "/api/stop",                   "清理桌面-推理"),
 
     # ===== 清理桌面 - 复位 =====
-    ApiAction("12", "清理桌面：复位（桌面默认）",          "POST", 9052, "/api/reset",                  "清理桌面-复位"),
+    ApiAction("14", "清理桌面：复位（桌面默认）",          "POST", 9052, "/api/reset",                  "清理桌面-复位"),
 
     # ===== 清理桌面 - 夹爪 =====
-    ApiAction("13", "清理桌面：松爪",                     "POST", 9052, "/api/open_gripper",           "清理桌面-夹爪"),
-    ApiAction("14", "清理桌面：闭合夹爪",                 "POST", 9052, "/api/close_gripper",          "清理桌面-夹爪"),
+    ApiAction("15", "清理桌面：松爪",                     "POST", 9052, "/api/open_gripper",           "清理桌面-夹爪"),
+    ApiAction("16", "清理桌面：闭合夹爪",                 "POST", 9052, "/api/close_gripper",          "清理桌面-夹爪"),
 
     # ===== 清理桌面 - Replay =====
-    ApiAction("15", "清理桌面：Replay",
+    ApiAction("17", "清理桌面：Replay",
               "POST", 9052, "/api/replay_downsample",  "清理桌面-Replay",
-              note="需带 parquet_path，step 可选(默认15)",
-              body={"parquet_path": "/home/galbot/vla_client/episode_000000.parquet", "step": 15}),
+              note="需带 parquet_path，step 可选(默认15)，no_reset 默认true（仅底盘）",
+              body={"parquet_path": "/home/galbot/vla_client/episode_000000.parquet", "step": 15, "no_reset": True}),
 ]
 
 ACTION_BY_KEY = {action.key: action for action in ACTIONS}
