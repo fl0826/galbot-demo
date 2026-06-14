@@ -11,4 +11,3 @@ uv run python scripts/serve_policy.py \
   --policy.config pi05_galbot_fullbody_nolegandheadchassis_stage2 \
   --policy.dir /home/zy/Project/model/black_bag/V4_1/29999
 
-~

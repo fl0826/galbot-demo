@@ -1,0 +1,286 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<osm version="0.6" generator="JOSM">
+  <node id="28" version="1" lat="49.0000053" lon="8.400058">
+    <tag k="type" v="key_pose"/>
+    <tag k="z" v="-0.015181"/>
+    <tag k="qx" v="-0.002958"/>
+    <tag k="qy" v="0.007795"/>
+    <tag k="qz" v="-0.751078"/>
+    <tag k="qw" v="0.660161"/>
+    <tag k="time" v="1779869622.829239"/>
+  </node>
+  <node id="27" version="1" lat="49.0000099" lon="8.4000593">
+    <tag k="type" v="key_pose"/>
+    <tag k="z" v="-0.012054"/>
+    <tag k="qx" v="-0.002974"/>
+    <tag k="qy" v="0.007098"/>
+    <tag k="qz" v="-0.733239"/>
+    <tag k="qw" v="0.679927"/>
+    <tag k="time" v="1779869621.131676"/>
+  </node>
+  <node id="26" version="1" lat="49.0000124" lon="8.4000602">
+    <tag k="type" v="key_pose"/>
+    <tag k="z" v="-0.009606"/>
+    <tag k="qx" v="0.003602"/>
+    <tag k="qy" v="-0.006640"/>
+    <tag k="qz" v="0.878836"/>
+    <tag k="qw" v="-0.477065"/>
+    <tag k="time" v="1779869619.235544"/>
+  </node>
+  <node id="25" version="1" lat="49.0000124" lon="8.4000615">
+    <tag k="type" v="key_pose"/>
+    <tag k="z" v="-0.013386"/>
+    <tag k="qx" v="0.004126"/>
+    <tag k="qy" v="-0.006663"/>
+    <tag k="qz" v="0.974245"/>
+    <tag k="qw" v="-0.225356"/>
+    <tag k="time" v="1779869617.937091"/>
+  </node>
+  <node id="24" version="1" lat="49.0000119" lon="8.4000629">
+    <tag k="type" v="key_pose"/>
+    <tag k="z" v="-0.008395"/>
+    <tag k="qx" v="0.003098"/>
+    <tag k="qy" v="-0.006671"/>
+    <tag k="qz" v="0.999466"/>
+    <tag k="qw" v="0.031823"/>
+    <tag k="time" v="1779869616.638876"/>
+  </node>
+  <node id="23" version="1" lat="49.0000108" lon="8.4000637">
+    <tag k="type" v="key_pose"/>
+    <tag k="z" v="-0.015390"/>
+    <tag k="qx" v="0.003500"/>
+    <tag k="qy" v="-0.006276"/>
+    <tag k="qz" v="0.960011"/>
+    <tag k="qw" v="0.279871"/>
+    <tag k="time" v="1779869615.242478"/>
+  </node>
+  <node id="22" version="1" lat="49.0000096" lon="8.4000637">
+    <tag k="type" v="key_pose"/>
+    <tag k="z" v="-0.020865"/>
+    <tag k="qx" v="0.002953"/>
+    <tag k="qy" v="-0.004291"/>
+    <tag k="qz" v="0.851475"/>
+    <tag k="qw" v="0.524369"/>
+    <tag k="time" v="1779869614.144625"/>
+  </node>
+  <node id="21" version="1" lat="49.0000073" lon="8.4000635">
+    <tag k="type" v="key_pose"/>
+    <tag k="z" v="-0.021648"/>
+    <tag k="qx" v="0.002964"/>
+    <tag k="qy" v="-0.003698"/>
+    <tag k="qz" v="0.686854"/>
+    <tag k="qw" v="0.726780"/>
+    <tag k="time" v="1779869612.148441"/>
+  </node>
+  <node id="20" version="1" lat="49.0000027" lon="8.4000633">
+    <tag k="type" v="key_pose"/>
+    <tag k="z" v="-0.023550"/>
+    <tag k="qx" v="0.002909"/>
+    <tag k="qy" v="-0.004681"/>
+    <tag k="qz" v="0.718237"/>
+    <tag k="qw" v="0.695777"/>
+    <tag k="time" v="1779869610.848784"/>
+  </node>
+  <node id="19" version="1" lat="48.9999982" lon="8.4000633">
+    <tag k="type" v="key_pose"/>
+    <tag k="z" v="-0.025462"/>
+    <tag k="qx" v="0.000577"/>
+    <tag k="qy" v="-0.002705"/>
+    <tag k="qz" v="0.684237"/>
+    <tag k="qw" v="0.729255"/>
+    <tag k="time" v="1779869609.550711"/>
+  </node>
+  <node id="18" version="1" lat="48.9999966" lon="8.4000611">
+    <tag k="type" v="key_pose"/>
+    <tag k="z" v="-0.025709"/>
+    <tag k="qx" v="0.000232"/>
+    <tag k="qy" v="-0.000757"/>
+    <tag k="qz" v="0.482020"/>
+    <tag k="qw" v="0.876160"/>
+    <tag k="time" v="1779869608.552730"/>
+  </node>
+  <node id="17" version="1" lat="48.9999959" lon="8.4000586">
+    <tag k="type" v="key_pose"/>
+    <tag k="z" v="-0.022937"/>
+    <tag k="qx" v="-0.000548"/>
+    <tag k="qy" v="0.000503"/>
+    <tag k="qz" v="0.248641"/>
+    <tag k="qw" v="0.968596"/>
+    <tag k="time" v="1779869607.654707"/>
+  </node>
+  <node id="16" version="1" lat="48.9999964" lon="8.4000538">
+    <tag k="type" v="key_pose"/>
+    <tag k="z" v="-0.021478"/>
+    <tag k="qx" v="-0.000581"/>
+    <tag k="qy" v="0.002325"/>
+    <tag k="qz" v="-0.014596"/>
+    <tag k="qw" v="0.999891"/>
+    <tag k="time" v="1779869606.255664"/>
+  </node>
+  <node id="15" version="1" lat="48.9999968" lon="8.4000469">
+    <tag k="type" v="key_pose"/>
+    <tag k="z" v="-0.017753"/>
+    <tag k="qx" v="-0.000675"/>
+    <tag k="qy" v="0.002046"/>
+    <tag k="qz" v="-0.032487"/>
+    <tag k="qw" v="0.999470"/>
+    <tag k="time" v="1779869604.858416"/>
+  </node>
+  <node id="14" version="1" lat="48.9999973" lon="8.4000396">
+    <tag k="type" v="key_pose"/>
+    <tag k="z" v="-0.012642"/>
+    <tag k="qx" v="0.000720"/>
+    <tag k="qy" v="0.001435"/>
+    <tag k="qz" v="-0.004742"/>
+    <tag k="qw" v="0.999987"/>
+    <tag k="time" v="1779869603.660488"/>
+  </node>
+  <node id="1" version="1" lat="49" lon="8.4">
+    <tag k="type" v="key_pose"/>
+    <tag k="z" v="0.000000"/>
+    <tag k="qx" v="0.000000"/>
+    <tag k="qy" v="0.000000"/>
+    <tag k="qz" v="0.000000"/>
+    <tag k="qw" v="1.000000"/>
+    <tag k="time" v="1779869581.895914"/>
+  </node>
+  <node id="2" version="1" lat="48.9999997" lon="8.4000015">
+    <tag k="type" v="key_pose"/>
+    <tag k="z" v="0.003419"/>
+    <tag k="qx" v="0.001949"/>
+    <tag k="qy" v="-0.000255"/>
+    <tag k="qz" v="0.247614"/>
+    <tag k="qw" v="0.968857"/>
+    <tag k="time" v="1779869586.888255"/>
+  </node>
+  <node id="3" version="1" lat="48.9999998" lon="8.4000032">
+    <tag k="type" v="key_pose"/>
+    <tag k="z" v="0.004561"/>
+    <tag k="qx" v="0.002397"/>
+    <tag k="qy" v="-0.002158"/>
+    <tag k="qz" v="0.480143"/>
+    <tag k="qw" v="0.877185"/>
+    <tag k="time" v="1779869588.086221"/>
+  </node>
+  <node id="4" version="1" lat="49.000004" lon="8.4000058">
+    <tag k="type" v="key_pose"/>
+    <tag k="z" v="0.007348"/>
+    <tag k="qx" v="0.001560"/>
+    <tag k="qy" v="-0.003649"/>
+    <tag k="qz" v="0.667419"/>
+    <tag k="qw" v="0.744672"/>
+    <tag k="time" v="1779869590.082258"/>
+  </node>
+  <node id="5" version="1" lat="49.0000086" lon="8.4000064">
+    <tag k="type" v="key_pose"/>
+    <tag k="z" v="0.009892"/>
+    <tag k="qx" v="0.001855"/>
+    <tag k="qy" v="-0.002773"/>
+    <tag k="qz" v="0.653215"/>
+    <tag k="qw" v="0.757166"/>
+    <tag k="time" v="1779869591.487216"/>
+  </node>
+  <node id="6" version="1" lat="49.0000114" lon="8.4000064">
+    <tag k="type" v="key_pose"/>
+    <tag k="z" v="0.011820"/>
+    <tag k="qx" v="0.000643"/>
+    <tag k="qy" v="-0.001931"/>
+    <tag k="qz" v="0.432653"/>
+    <tag k="qw" v="0.901558"/>
+    <tag k="time" v="1779869592.876743"/>
+  </node>
+  <node id="7" version="1" lat="49.0000125" lon="8.4000073">
+    <tag k="type" v="key_pose"/>
+    <tag k="z" v="0.013298"/>
+    <tag k="qx" v="0.000607"/>
+    <tag k="qy" v="0.000066"/>
+    <tag k="qz" v="0.188008"/>
+    <tag k="qw" v="0.982167"/>
+    <tag k="time" v="1779869594.077139"/>
+  </node>
+  <node id="8" version="1" lat="49.0000137" lon="8.400012">
+    <tag k="type" v="key_pose"/>
+    <tag k="z" v="0.007315"/>
+    <tag k="qx" v="-0.000149"/>
+    <tag k="qy" v="0.002307"/>
+    <tag k="qz" v="-0.076470"/>
+    <tag k="qw" v="0.997069"/>
+    <tag k="time" v="1779869595.973409"/>
+  </node>
+  <node id="9" version="1" lat="49.0000126" lon="8.4000153">
+    <tag k="type" v="key_pose"/>
+    <tag k="z" v="0.004807"/>
+    <tag k="qx" v="0.000099"/>
+    <tag k="qy" v="0.004495"/>
+    <tag k="qz" v="-0.328902"/>
+    <tag k="qw" v="0.944353"/>
+    <tag k="time" v="1779869597.271034"/>
+  </node>
+  <node id="10" version="1" lat="49.0000087" lon="8.4000189">
+    <tag k="type" v="key_pose"/>
+    <tag k="z" v="0.002566"/>
+    <tag k="qx" v="-0.002162"/>
+    <tag k="qy" v="0.006805"/>
+    <tag k="qz" v="-0.505228"/>
+    <tag k="qw" v="0.862956"/>
+    <tag k="time" v="1779869598.767480"/>
+  </node>
+  <node id="11" version="1" lat="49.0000044" lon="8.4000219">
+    <tag k="type" v="key_pose"/>
+    <tag k="z" v="-0.001558"/>
+    <tag k="qx" v="-0.002253"/>
+    <tag k="qy" v="0.005225"/>
+    <tag k="qz" v="-0.400919"/>
+    <tag k="qw" v="0.916096"/>
+    <tag k="time" v="1779869599.965171"/>
+  </node>
+  <node id="12" version="1" lat="49.0000008" lon="8.4000262">
+    <tag k="type" v="key_pose"/>
+    <tag k="z" v="-0.007842"/>
+    <tag k="qx" v="-0.000588"/>
+    <tag k="qy" v="0.003914"/>
+    <tag k="qz" v="-0.175439"/>
+    <tag k="qw" v="0.984482"/>
+    <tag k="time" v="1779869601.168234"/>
+  </node>
+  <node id="13" version="1" lat="48.9999984" lon="8.4000324">
+    <tag k="type" v="key_pose"/>
+    <tag k="z" v="-0.011392"/>
+    <tag k="qx" v="0.000086"/>
+    <tag k="qy" v="0.003917"/>
+    <tag k="qz" v="-0.049364"/>
+    <tag k="qw" v="0.998773"/>
+    <tag k="time" v="1779869602.461356"/>
+  </node>
+  <way id="29" version="1">
+    <nd ref="1"/>
+    <nd ref="2"/>
+    <nd ref="3"/>
+    <nd ref="4"/>
+    <nd ref="5"/>
+    <nd ref="6"/>
+    <nd ref="7"/>
+    <nd ref="8"/>
+    <nd ref="9"/>
+    <nd ref="10"/>
+    <nd ref="11"/>
+    <nd ref="12"/>
+    <nd ref="13"/>
+    <nd ref="14"/>
+    <nd ref="15"/>
+    <nd ref="16"/>
+    <nd ref="17"/>
+    <nd ref="18"/>
+    <nd ref="19"/>
+    <nd ref="20"/>
+    <nd ref="21"/>
+    <nd ref="22"/>
+    <nd ref="23"/>
+    <nd ref="24"/>
+    <nd ref="25"/>
+    <nd ref="26"/>
+    <nd ref="27"/>
+    <nd ref="28"/>
+    <tag k="type" v="key_poses"/>
+  </way>
+</osm>

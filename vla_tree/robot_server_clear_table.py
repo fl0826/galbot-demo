@@ -967,7 +967,7 @@ def _do_reset(pose_file: str):
 @app.route("/api/reset", methods=["POST"])
 def api_reset():
     """复位到桌面默认位姿（异步后台执行）"""
-    _do_reset("config/init_pose/zhiyuan_pick_trashstand.json")
+    _do_reset("config/init_pose/zhiyuan_pick_trash_stand.json")
     return _ok(msg="复位任务已启动")
 
 
