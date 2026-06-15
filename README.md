@@ -1,14 +1,74 @@
 # galbot-demo
-demo存档
 
+银河 G1 机器人 VLA demo 存档。
 
-| 文件 | 类型 | 用途 |
-|------|------|------|
-| `table.py` | 交互式 | 终端输入 1/2/3/4/5/s/q 手动切换桌面四个子任务 |
-| `floor.py` | 交互式 | 终端输入 1/2/s/q 手动控制清理地面 |
-| `bag.py` | 交互式 | 终端输入 1/2/3/s/q 手动控制套垃圾袋（含断点续推） |
-| `auto_table.py` | 自动 | 启动后按顺序执行桌面四个子任务，根据 action delta 自动切换 |
-| `robot_server_clear_table.py` | HTTP 服务 | curl 触发，端口 9052 |
-| `robot_server_clean_floor.py` | HTTP 服务 | curl 触发，端口 9051 |
-| `robot_server_put_garbage_bag.py` | HTTP 服务 | curl 触发，端口 9053 |
+## 目录结构
 
+```
+galbot-demo/
+├── client/          # 机器人端脚本（交互式 / 自动）
+├── client_server/   # HTTP 服务 + 工具脚本
+├── bash/            # 推理服务器：拉模型 / 启动模型服务
+├── traj/            # 采集轨迹 parquet 文件
+├── config/          # 初始位姿和高度配置
+└── v/               # 历史版本存档（v0 / v1导航版）
+```
+
+## 任务与端口
+
+| 任务 | 端口 |
+|------|------|
+| 清理桌面 (clear_table) | 9052 |
+| 清理地面 (clean_floor) | 9051 |
+| 套垃圾袋 (put_garbage_bag) | 9053 |
+
+## 运行模式
+
+**交互式**（终端按键手动控制）
+
+| 脚本 | 按键 |
+|------|------|
+| `client/table.py` | `1/2/3/4` 切子任务，`s` 停止，`q` 退出 |
+| `client/floor.py` | `1` 启动，`2` 复位，`s` 停止，`q` 退出 |
+| `client/bag.py` | `1/2/3` 切阶段，`s` 停止，`q` 退出 |
+
+**自动模式**：`client/auto_table_124.py`，自动依次执行桌面子任务 1→2→4。
+
+**HTTP 服务模式**：修改 `start.sh` 顶部的 IP，一键启动三个服务 + 交互菜单。
+
+```bash
+bash start.sh
+```
+
+三个服务日志分别写入 `logs/`，菜单里输入编号调用接口。
+
+## 工具脚本
+
+以下脚本均在 `client_server/` 目录下运行。
+
+**复位**
+
+```bash
+python reset.py                # 桌面位姿（默认）
+python reset.py --pose floor   # 地面位姿
+```
+
+**位姿工具**
+
+```bash
+python pose_tool.py get --out my_pose.json          # 获取当前位姿
+python pose_tool.py reset --pose-file my_pose.json  # 复位到指定位姿
+```
+
+**轨迹回放**（验证 `traj/` 下的采集数据）
+
+```bash
+python replay_downsample.py --parquet ../traj/导航垃圾桶.parquet --step 15 --speed 0.8
+```
+
+**相机预览**（浏览器访问 `http://<机器人IP>:8080`）
+
+```bash
+python camera_viewer_1.py   # 仅头部相机
+python camera_viewer_3.py   # 头部 + 双臂三路相机
+```
