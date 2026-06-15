@@ -1,6 +1,6 @@
 # galbot-demo
 
-银河 G1 机器人 VLA demo 存档。
+银河 galbot 机器人 VLA demo 存档。
 
 ## 目录结构
 
@@ -16,21 +16,25 @@ galbot-demo/
 
 ## 任务与端口
 
-| 任务 | 端口 |
-|------|------|
-| 清理桌面 (clear_table) | 9052 |
-| 清理地面 (clean_floor) | 9051 |
+
+| 任务                     | 端口   |
+| ---------------------- | ---- |
+| 清理桌面 (clear_table)     | 9052 |
+| 清理地面 (clean_floor)     | 9051 |
 | 套垃圾袋 (put_garbage_bag) | 9053 |
+
 
 ## 运行模式
 
 **交互式**（终端按键手动控制）
 
-| 脚本 | 按键 |
-|------|------|
+
+| 脚本                | 按键                           |
+| ----------------- | ---------------------------- |
 | `client/table.py` | `1/2/3/4` 切子任务，`s` 停止，`q` 退出 |
-| `client/floor.py` | `1` 启动，`2` 复位，`s` 停止，`q` 退出 |
-| `client/bag.py` | `1/2/3` 切阶段，`s` 停止，`q` 退出 |
+| `client/floor.py` | `1` 启动，`2` 复位，`s` 停止，`q` 退出  |
+| `client/bag.py`   | `1/2/3` 切阶段，`s` 停止，`q` 退出    |
+
 
 **自动模式**：`client/auto_table_124.py`，自动依次执行桌面子任务 1→2→4。
 
@@ -72,3 +76,4 @@ python replay_downsample.py --parquet ../traj/导航垃圾桶.parquet --step 15 
 python camera_viewer_1.py   # 仅头部相机
 python camera_viewer_3.py   # 头部 + 双臂三路相机
 ```
+
