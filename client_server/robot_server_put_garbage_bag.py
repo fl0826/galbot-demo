@@ -2,27 +2,17 @@ import sys
 import os
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
-from args import (
-    Args,
-    OBS_Head_IMG,
-    OBS_PREV_STATE,
-    OBS_STATE,
-    OBS_Right_WRIST_IMG,
-    OBS_Left_WRIST_IMG,
-)
+from args import Args, OBS_STATE
 from model_agent.model_agent import ModelAgent
 from galbot_control.galbot_control import GalbotControl
 from tool.logger import LoggerManager
 from tool.tool_shutdown import ShutdownTool
 from tool.tool_rate import ToolRate
-from tool.vla_profiler import profile_timeline, set_profile_enabled
-import sys
 import threading
 import time
 import numpy as np
 import copy
 from flask import Flask, jsonify, request
-import argparse
 import math
 import pandas as pd
 
@@ -564,9 +554,15 @@ def _action38_to_joints23(a):
 
 
 def _action38_to_chassis(a):
-    """LeRobot action(38) -> 底盘 [x, y, yaw]。"""
+    """LeRobot action(38) -> 底盘 [x, y, yaw]。
+    a[31]: odom_pose_position_x
+    a[32]: odom_pose_position_y
+    a[33]: odom_pose_orientation_z (四元数 z)
+    a[34]: odom_pose_orientation_w (四元数 w)
+    yaw = 2 * atan2(z, w)
+    """
     a = np.asarray(a, dtype=float)
-    return [a[31], a[32], math.atan2(a[33], a[34]) * 2]
+    return [a[31], a[32], 2 * math.atan2(a[33], a[34])]
 
 
 def _wait_replay_sensor_ready(galbot, timeout=5.0):
@@ -682,7 +678,8 @@ def _run_replay_downsample(
         for j, a in enumerate(keyframes):
             mat[1, 1 + j] = (j + 1) * key_dt
             mat[2 : 2 + 23, 1 + j] = _action38_to_joints23(a)
-            mat[2 + 23 : 2 + 26, 1 + j] = _action38_to_chassis(a)
+            chassis_vel = _action38_to_chassis(a)
+            mat[2 + 23 : 2 + 26, 1 + j] = [chassis_vel[0] * key_dt, chassis_vel[1] * key_dt, chassis_vel[2] * key_dt]
 
         mat[2 + 14, :] *= 1000
         mat[2 + 22, :] *= 1000
@@ -792,8 +789,23 @@ def api_stop():
     global _task_thread
     if _vla:
         _vla.shutdown()
+        _vla.galbot.shutdown_event.set()
+        _vla.galbot.request_vla_service("stop")
     if _task_thread and _task_thread.is_alive():
         _task_thread.join(timeout=10)
+        if _task_thread.is_alive():
+            with _task_lock:
+                _task_status.update(
+                    {
+                        "running": True,
+                        "success": None,
+                        "message": "停止超时：任务线程仍未退出，请稍后再试或重启服务",
+                    }
+                )
+            return _err("停止超时：任务线程仍未退出，请稍后再试或重启服务", status=500)
+    with _task_lock:
+        _task_status["running"] = False
+        _task_status["message"] = "任务已停止"
     return _ok(msg="任务已停止")
 
 
@@ -861,8 +873,12 @@ def api_reset():
     global _task_thread
     if _vla:
         _vla.shutdown()
+        _vla.galbot.shutdown_event.set()
+        _vla.galbot.request_vla_service("stop")
     if _task_thread and _task_thread.is_alive():
         _task_thread.join(timeout=10)
+        if _task_thread.is_alive():
+            return _err("当前任务线程仍未退出，不能复位，请稍后再试或重启服务", status=500)
     _task_thread = threading.Thread(target=_run_reset, daemon=True)
     _task_thread.start()
     return _ok(msg="复位任务已启动")

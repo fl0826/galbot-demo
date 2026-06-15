@@ -2,27 +2,17 @@ import sys
 import os
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
-from args import (
-    Args,
-    OBS_Head_IMG,
-    OBS_PREV_STATE,
-    OBS_STATE,
-    OBS_Right_WRIST_IMG,
-    OBS_Left_WRIST_IMG,
-)
+from args import Args, OBS_STATE
 from model_agent.model_agent import ModelAgent
 from galbot_control.galbot_control import GalbotControl
 from tool.logger import LoggerManager
 from tool.tool_shutdown import ShutdownTool
 from tool.tool_rate import ToolRate
-from tool.vla_profiler import profile_timeline, set_profile_enabled
-import sys
 import threading
 import time
 import numpy as np
 import copy
 from flask import Flask, jsonify, request
-import argparse
 import math
 import pandas as pd
 
@@ -564,8 +554,8 @@ _args_global = Args()
 _args_global.init_pose_file = "config/init_pose/zhiyuan_pick_trash_stand.json"
 _args_global.blocking = False
 # 工作模式：双手腕相机用 1280x720
-_args_global.raw_image_size_left_arm = [1280, 720]
-_args_global.raw_image_size_right_arm = [1280, 720]
+_args_global.raw_image_size_left_arm = [640, 360]
+_args_global.raw_image_size_right_arm = [640, 360]
 
 
 def _ok(data=None, msg=""):
@@ -636,8 +626,7 @@ def _run_replay_downsample(
                 "message": "Replay降采样执行中...",
                 "task_key": "replay_downsample",
                 "task_prompt": parquet_path,
-                "start_time": time.time(),
-                "end_time": None,
+                "start_time": None,
             }
         )
 
@@ -1110,6 +1099,7 @@ def api_health():
 
 
 if __name__ == "__main__":
+    import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("--model-host", default="172.20.10.4", help="模型服务器IP")
     cli_args = parser.parse_args()
