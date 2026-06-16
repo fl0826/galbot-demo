@@ -11,7 +11,7 @@ galbot-demo/
 ├── bash/            # 推理服务器：拉模型 / 启动模型服务
 ├── traj/            # 采集轨迹 parquet 文件
 ├── config/          # 初始位姿和高度配置
-└── v/               # 历史版本存档（v0 / v1导航版）
+└── version/               # 历史版本存档（v0 / v1导航版）
 ```
 
 ## 任务与端口
@@ -60,8 +60,8 @@ python reset.py --pose floor   # 地面位姿
 **位姿工具**
 
 ```bash
-python pose_tool.py get --out my_pose.json          # 获取当前位姿
-python pose_tool.py reset --pose-file my_pose.json  # 复位到指定位姿
+python pose_tool.py get --out my_pose.json          # 获取当前位姿  保存到 my_pose.json 
+python pose_tool.py reset --pose-file my_pose.json  # 移动到指定位姿 my_pose.json 
 ```
 
 **轨迹回放**（验证 `traj/` 下的采集数据）
