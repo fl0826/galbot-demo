@@ -32,7 +32,7 @@ import logging
 
 class CameraViewer:
     """轻量相机预览（复用 GalbotControl.galbot_interface 的订阅）"""
-    
+
     def __init__(self, galbot):
         self.galbot = galbot
         self.interface = galbot.galbot_interface
@@ -42,14 +42,32 @@ class CameraViewer:
     def get_frame(self, key):
         """获取指定相机的最新帧（JPEG 字节）"""
         if key == "head":
-            return (bytes(self.interface._image_head_left) if self.interface._image_head_left else None,
-                    self.interface._image_head_left_timestamp)
+            return (
+                (
+                    bytes(self.interface._image_head_left)
+                    if self.interface._image_head_left
+                    else None
+                ),
+                self.interface._image_head_left_timestamp,
+            )
         elif key == "left":
-            return (bytes(self.interface._image_hand_left) if self.interface._image_hand_left else None,
-                    self.interface._image_hand_left_timestamp)
+            return (
+                (
+                    bytes(self.interface._image_hand_left)
+                    if self.interface._image_hand_left
+                    else None
+                ),
+                self.interface._image_hand_left_timestamp,
+            )
         elif key == "right":
-            return (bytes(self.interface._image_hand_right) if self.interface._image_hand_right else None,
-                    self.interface._image_hand_right_timestamp)
+            return (
+                (
+                    bytes(self.interface._image_hand_right)
+                    if self.interface._image_hand_right
+                    else None
+                ),
+                self.interface._image_hand_right_timestamp,
+            )
         return None, 0.0
 
     def status(self):
@@ -58,18 +76,27 @@ class CameraViewer:
         return {
             "head": {
                 "connected": self.interface._image_head_left is not None,
-                "last_frame_age_s": round(now - self.interface._image_head_left_timestamp, 2) 
-                                   if self.interface._image_head_left_timestamp > 0 else None,
+                "last_frame_age_s": (
+                    round(now - self.interface._image_head_left_timestamp, 2)
+                    if self.interface._image_head_left_timestamp > 0
+                    else None
+                ),
             },
             "left": {
                 "connected": self.interface._image_hand_left is not None,
-                "last_frame_age_s": round(now - self.interface._image_hand_left_timestamp, 2) 
-                                   if self.interface._image_hand_left_timestamp > 0 else None,
+                "last_frame_age_s": (
+                    round(now - self.interface._image_hand_left_timestamp, 2)
+                    if self.interface._image_hand_left_timestamp > 0
+                    else None
+                ),
             },
             "right": {
                 "connected": self.interface._image_hand_right is not None,
-                "last_frame_age_s": round(now - self.interface._image_hand_right_timestamp, 2) 
-                                   if self.interface._image_hand_right_timestamp > 0 else None,
+                "last_frame_age_s": (
+                    round(now - self.interface._image_hand_right_timestamp, 2)
+                    if self.interface._image_hand_right_timestamp > 0
+                    else None
+                ),
             },
         }
 
@@ -96,7 +123,9 @@ def _mjpeg_generator(key):
 def stream(key):
     if key not in ("head", "left", "right"):
         return "Unknown camera", 404
-    return Response(_mjpeg_generator(key), mimetype="multipart/x-mixed-replace; boundary=frame")
+    return Response(
+        _mjpeg_generator(key), mimetype="multipart/x-mixed-replace; boundary=frame"
+    )
 
 
 @app.route("/snapshot/<key>")
@@ -115,8 +144,10 @@ def status():
 @app.route("/")
 def index():
     s = _viewer.status()
+
     def b(k):
         return f'<span style="background:{"#22c55e" if s[k]["connected"] else "#ef4444"};color:#fff;padding:2px 8px;border-radius:4px;font-size:12px">{"连接" if s[k]["connected"] else "离线"}</span>'
+
     return f"""<!DOCTYPE html><html lang="zh"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>银河机器人 相机实时预览</title><style>*{{box-sizing:border-box;margin:0;padding:0}}html,body{{height:100%;overflow:hidden}}body{{background:#0f172a;color:#e2e8f0;font-family:sans-serif;display:flex;flex-direction:column}}header{{background:#1e293b;padding:8px 16px;border-bottom:1px solid #334155;flex-shrink:0}}h1{{font-size:16px;font-weight:600}}.layout{{flex:1;display:flex;flex-direction:column;gap:8px;padding:8px;min-height:0}}.row{{display:grid;gap:8px;min-height:0}}.row-top{{flex:1.2}}.row-bottom{{flex:1;grid-template-columns:1fr 1fr}}.card{{background:#1e293b;border-radius:8px;overflow:hidden;border:1px solid #334155;display:flex;flex-direction:column;min-height:0}}.card-header{{display:flex;justify-content:space-between;align-items:center;padding:5px 10px;background:#263347;font-size:12px;font-weight:500;flex-shrink:0}}.card img{{flex:1;width:100%;min-height:0;object-fit:contain;background:#0f172a;display:block}}.dot{{width:7px;height:7px;border-radius:50%;background:#22c55e;display:inline-block;margin-right:5px;animation:pulse 2s infinite}}@keyframes pulse{{0%,100%{{opacity:1}}50%{{opacity:0.4}}}}</style></head><body><header><h1>银河机器人 相机实时预览</h1></header><div class="layout"><div class="row row-top"><div class="card"><div class="card-header"><span><span class="dot"></span>头部相机</span>{b("head")}</div><img src="/stream/head"></div></div><div class="row row-bottom"><div class="card"><div class="card-header"><span><span class="dot"></span>左腕相机</span>{b("left")}</div><img src="/stream/left"></div><div class="card"><div class="card-header"><span><span class="dot"></span>右腕相机</span>{b("right")}</div><img src="/stream/right"></div></div></div></body></html>"""
 
 
@@ -124,7 +155,9 @@ if __name__ == "__main__":
     LoggerManager.get_logger()
     for listener in LoggerManager._queue_listeners.values():
         for h in listener.handlers:
-            if isinstance(h, logging.StreamHandler) and not isinstance(h, logging.FileHandler):
+            if isinstance(h, logging.StreamHandler) and not isinstance(
+                h, logging.FileHandler
+            ):
                 h.setLevel(logging.ERROR)
 
     parser = argparse.ArgumentParser(description="机器人三路相机实时预览服务")
@@ -146,8 +179,10 @@ if __name__ == "__main__":
     print("[等待] 传感器就绪...")
     t0 = time.time()
     while time.time() - t0 < 5:
-        if (galbot.galbot_interface._joint_sensor_vla is not None
-            and len(galbot.galbot_interface.pose_buffer) >= 2):
+        if (
+            galbot.galbot_interface._joint_sensor_vla is not None
+            and len(galbot.galbot_interface.pose_buffer) >= 2
+        ):
             break
         time.sleep(0.05)
     print(f"[就绪] 传感器连接完成 ({time.time() - t0:.1f}s)")
@@ -155,11 +190,6 @@ if __name__ == "__main__":
     _viewer = CameraViewer(galbot)
     tool_shutdown.on_shutdown(_viewer.shutdown)
 
-    print(f"[端口] {cli.port}")
-    print(f"[访问] http://192.168.5.4:{cli.port}")
-    print(f"[流]   头部: http://192.168.5.4:{cli.port}/stream/head")
-    print(f"[流]   左腕: http://192.168.5.4:{cli.port}/stream/left")
-    print(f"[流]   右腕: http://192.168.5.4:{cli.port}/stream/right")
     print("=" * 60)
 
     app.run(host=cli.host, port=cli.port, threaded=True)

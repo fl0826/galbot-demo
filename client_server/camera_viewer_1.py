@@ -42,8 +42,14 @@ class CameraViewer:
     def get_frame(self, key):
         """获取头部相机最新帧（JPEG 字节）"""
         if key == "head":
-            return (bytes(self.interface._image_head_left) if self.interface._image_head_left else None,
-                    self.interface._image_head_left_timestamp)
+            return (
+                (
+                    bytes(self.interface._image_head_left)
+                    if self.interface._image_head_left
+                    else None
+                ),
+                self.interface._image_head_left_timestamp,
+            )
         return None, 0.0
 
     def status(self):
@@ -52,8 +58,11 @@ class CameraViewer:
         return {
             "head": {
                 "connected": self.interface._image_head_left is not None,
-                "last_frame_age_s": round(now - self.interface._image_head_left_timestamp, 2)
-                                   if self.interface._image_head_left_timestamp > 0 else None,
+                "last_frame_age_s": (
+                    round(now - self.interface._image_head_left_timestamp, 2)
+                    if self.interface._image_head_left_timestamp > 0
+                    else None
+                ),
             },
         }
 
@@ -78,7 +87,9 @@ def _mjpeg_generator(key):
 
 @app.route("/stream/head")
 def stream():
-    return Response(_mjpeg_generator("head"), mimetype="multipart/x-mixed-replace; boundary=frame")
+    return Response(
+        _mjpeg_generator("head"), mimetype="multipart/x-mixed-replace; boundary=frame"
+    )
 
 
 @app.route("/snapshot/head")
@@ -104,7 +115,9 @@ if __name__ == "__main__":
     LoggerManager.get_logger()
     for listener in LoggerManager._queue_listeners.values():
         for h in listener.handlers:
-            if isinstance(h, logging.StreamHandler) and not isinstance(h, logging.FileHandler):
+            if isinstance(h, logging.StreamHandler) and not isinstance(
+                h, logging.FileHandler
+            ):
                 h.setLevel(logging.ERROR)
 
     parser = argparse.ArgumentParser(description="机器人头部相机实时预览服务")
@@ -126,8 +139,10 @@ if __name__ == "__main__":
     print("[等待] 传感器就绪...")
     t0 = time.time()
     while time.time() - t0 < 5:
-        if (galbot.galbot_interface._joint_sensor_vla is not None
-                and len(galbot.galbot_interface.pose_buffer) >= 2):
+        if (
+            galbot.galbot_interface._joint_sensor_vla is not None
+            and len(galbot.galbot_interface.pose_buffer) >= 2
+        ):
             break
         time.sleep(0.05)
     print(f"[就绪] 传感器连接完成 ({time.time() - t0:.1f}s)")
@@ -135,9 +150,6 @@ if __name__ == "__main__":
     _viewer = CameraViewer(galbot)
     tool_shutdown.on_shutdown(_viewer.shutdown)
 
-    print(f"[端口] {cli.port}")
-    print(f"[访问] http://192.168.5.4:{cli.port}")
-    print(f"[流]   头部: http://192.168.5.4:{cli.port}/stream/head")
     print("=" * 60)
 
     app.run(host=cli.host, port=cli.port, threaded=True)
