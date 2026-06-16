@@ -539,7 +539,7 @@ def _err(msg, status=400):
     return jsonify({"code": 1, "data": {}, "msg": msg}), status
 
 
-# ==================== Replay 降采样 ====================
+# ==================== Replay ====================
 def _action38_to_joints23(a):
     """LeRobot action(38) -> 机器人 init_pose(23)，夹爪 mm->m。"""
     a = np.asarray(a, dtype=float)
@@ -679,7 +679,11 @@ def _run_replay_downsample(
             mat[1, 1 + j] = (j + 1) * key_dt
             mat[2 : 2 + 23, 1 + j] = _action38_to_joints23(a)
             chassis_vel = _action38_to_chassis(a)
-            mat[2 + 23 : 2 + 26, 1 + j] = [chassis_vel[0] * key_dt, chassis_vel[1] * key_dt, chassis_vel[2] * key_dt]
+            mat[2 + 23 : 2 + 26, 1 + j] = [
+                chassis_vel[0] * key_dt,
+                chassis_vel[1] * key_dt,
+                chassis_vel[2] * key_dt,
+            ]
 
         mat[2 + 14, :] *= 1000
         mat[2 + 22, :] *= 1000
@@ -878,7 +882,9 @@ def api_reset():
     if _task_thread and _task_thread.is_alive():
         _task_thread.join(timeout=10)
         if _task_thread.is_alive():
-            return _err("当前任务线程仍未退出，不能复位，请稍后再试或重启服务", status=500)
+            return _err(
+                "当前任务线程仍未退出，不能复位，请稍后再试或重启服务", status=500
+            )
     _task_thread = threading.Thread(target=_run_reset, daemon=True)
     _task_thread.start()
     return _ok(msg="复位任务已启动")

@@ -566,7 +566,7 @@ def _err(msg, status=400):
     return jsonify({"code": 1, "data": {}, "msg": msg}), status
 
 
-# ==================== Replay 降采样 ====================
+# ==================== Replay ====================
 def _action38_to_joints23(a):
     """LeRobot action(38) -> 机器人 init_pose(23)，夹爪 mm->m。"""
     a = np.asarray(a, dtype=float)
@@ -1100,6 +1100,7 @@ def api_health():
 
 if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--model-host", default="172.20.10.4", help="模型服务器IP")
     cli_args = parser.parse_args()

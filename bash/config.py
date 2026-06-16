@@ -1052,28 +1052,6 @@ _CONFIGS = [
         num_train_steps=20_000,
     ),
     TrainConfig(
-        name="pi05_galbot_leg_and_arms",
-        model=pi0_config.Pi0Config(pi05=True, action_horizon=50),
-        data=LeRobotGalbotDataConfig(
-            repo_id="pi05_galbot_leg_and_arms",
-            include_leg=True,
-            include_chassis=False,
-            include_head=False,
-            flat_state_action=True,
-            base_config=DataConfig(prompt_from_task=True),
-        ),
-        lr_schedule=_optimizer.CosineDecaySchedule(
-            warmup_steps=1_000,
-            peak_lr=2.5e-5,
-            decay_steps=80000,
-            decay_lr=2.5e-6,
-        ),
-        weight_loader=weight_loaders.CheckpointWeightLoader("/share/project/sqx/ckpt/params"),
-        num_train_steps=30000,
-        batch_size=128,
-        num_workers=32,
-    ),
-    TrainConfig(
         name="pi05_aloha_pen_uncap",
         model=pi0_config.Pi0Config(pi05=True),
         data=LeRobotAlohaDataConfig(
@@ -1102,6 +1080,29 @@ _CONFIGS = [
         weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi05_base/params"),
         num_train_steps=20_000,
         batch_size=64,
+    ),
+    TrainConfig(
+        name="pi05_galbot_leg_and_arms",
+        model=pi0_config.Pi0Config(pi05=True, action_horizon=50),
+        data=LeRobotGalbotDataConfig(
+            repo_id="pi05_galbot_leg_and_arms",
+            include_leg=True,
+            include_chassis=False,
+            include_head=False,
+            flat_state_action=True,
+            use_base_velocity=False,
+            base_config=DataConfig(prompt_from_task=True),
+        ),
+        lr_schedule=_optimizer.CosineDecaySchedule(
+            warmup_steps=1_000,
+            peak_lr=2.5e-5,    
+            decay_steps=60000,
+            decay_lr=2.5e-6,
+        ),
+        weight_loader=weight_loaders.CheckpointWeightLoader("/share/project/sqx/ckpt/params"),
+        num_train_steps=60000,
+        batch_size=128,
+        num_workers=32,
     ),
     #
     # Fine-tuning DROID configs.
@@ -1208,28 +1209,6 @@ _CONFIGS = [
         weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi0_base/params"),
         num_train_steps=20_000,
     ),
-    TrainConfig(
-        name="pi05_galbot_fullbody_nolegandhead",
-        model=pi0_config.Pi0Config(pi05=True, action_horizon=50),
-        data=LeRobotGalbotDataConfig(
-            repo_id="galbot_fullbody_nolegandhead",
-            include_leg=False,
-            include_chassis=True,
-            include_head=False,
-            flat_state_action=True,
-            base_config=DataConfig(prompt_from_task=True),
-        ),
-        lr_schedule=_optimizer.CosineDecaySchedule(
-            warmup_steps=1_000,
-            peak_lr=5e-5,
-            decay_steps=80000,
-            decay_lr=2.5e-5,
-        ),
-        weight_loader=weight_loaders.CheckpointWeightLoader("/share/project/sqx/ckpt/params"),
-        num_train_steps=80000,
-        batch_size=128,
-        num_workers=32
-    ),
     #
     # Fine-tuning Galbot configs.
     #
@@ -1326,28 +1305,6 @@ _CONFIGS = [
         weight_loader=weight_loaders.CheckpointWeightLoader("/share/project/sqx/ckpt/params"),
         num_train_steps=30_000,
     ),
-    # TrainConfig(
-    #     name="pi05_galbot_fullbody_nolegandhead",
-    #     model=pi0_config.Pi0Config(pi05=True, action_horizon=50),
-    #     data=LeRobotGalbotDataConfig(
-    #         repo_id="galbot_fullbody_nolegandhead",
-    #         include_leg=False,
-    #         include_chassis=True,
-    #         include_head=False,
-    #         flat_state_action=True,
-    #         base_config=DataConfig(prompt_from_task=True),
-    #     ),
-    #     lr_schedule=_optimizer.CosineDecaySchedule(
-    #         warmup_steps=1_000,
-    #         peak_lr=5e-5,
-    #         decay_steps=50000,
-    #         decay_lr=2.5e-5,
-    #     ),
-    #     weight_loader=weight_loaders.CheckpointWeightLoader("/share/project/sqx/ckpt/params"),
-    #     num_train_steps=50_000,
-    #     batch_size=256,
-    #     num_workers=32,
-    # ),
     TrainConfig(
         name="pi05_galbot_fullbody_nolegandheadchassis_stage2",
         model=pi0_config.Pi0Config(pi05=True, action_horizon=50),
@@ -1365,32 +1322,33 @@ _CONFIGS = [
             decay_steps=80000,
             decay_lr=2.5e-6,
         ),
-        weight_loader=weight_loaders.CheckpointWeightLoader("/share/project/sqx/cook-main/openpi/checkpoints/pi05_galbot_fullbody_nolegandheadchassis/all_black_garbage_bag_0506_trial1_202605061312/79999/params"),
+        weight_loader=weight_loaders.CheckpointWeightLoader("/share/project/lv/openpi/checkpoints/pi05_galbot_fullbody_nolegandheadchassis/lv_train_80k_gabage_bag_202605121230/79999/params"),
         num_train_steps=80000,
         batch_size=128,
         num_workers=128,
     ),
-    TrainConfig(
-        name="pi05_galbot_fullbody_nolegandheadchassis",
+TrainConfig(
+        name="pi05_galbot_fullbody_nolegandhead",
         model=pi0_config.Pi0Config(pi05=True, action_horizon=50),
         data=LeRobotGalbotDataConfig(
-            repo_id="pi05_galbot_fullbody_nolegandheadchassis",
+            repo_id="galbot_fullbody_nolegandhead",
             include_leg=False,
-            include_chassis=False,
+            include_chassis=True,
             include_head=False,
             flat_state_action=True,
+            use_base_velocity=True,
             base_config=DataConfig(prompt_from_task=True),
         ),
         lr_schedule=_optimizer.CosineDecaySchedule(
             warmup_steps=1_000,
             peak_lr=2.5e-5,
-            decay_steps=80000,
+            decay_steps=60000,
             decay_lr=2.5e-6,
         ),
         weight_loader=weight_loaders.CheckpointWeightLoader("/share/project/sqx/ckpt/params"),
-        num_train_steps=80000,
+        num_train_steps=60000,
         batch_size=128,
-        num_workers=128,
+        num_workers=32
     ),
     TrainConfig(
         name="pi05_galbot_fullbody_nolegandheadbase",
@@ -1415,7 +1373,28 @@ _CONFIGS = [
         num_workers=32,
     ),
     # 0505 demo1
-    
+    TrainConfig(
+        name="pi05_galbot_fullbody_nolegandheadchassis",
+        model=pi0_config.Pi0Config(pi05=True, action_horizon=50),
+        data=LeRobotGalbotDataConfig(
+            repo_id="galbot_fullbody_nolegandhead",
+            include_leg=False,
+            include_chassis=False,
+            include_head=False,
+            flat_state_action=True,
+            base_config=DataConfig(prompt_from_task=True),
+        ),
+        lr_schedule=_optimizer.CosineDecaySchedule(
+            warmup_steps=1_000,
+            peak_lr=5e-5,
+            decay_steps=30000,
+            decay_lr=2.5e-6,
+        ),
+        weight_loader=weight_loaders.CheckpointWeightLoader("/share/project/tree/ckpt/params"),
+        num_train_steps=30_000,
+        batch_size=128,
+        num_workers=32,
+    ),
     TrainConfig(
         name="pi0_fast_galbot_fullbody",
         model=pi0_fast.Pi0FASTConfig(

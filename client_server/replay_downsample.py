@@ -1,6 +1,6 @@
 """
 ================================================================
-  降采样 Replay 脚本
+Replay 脚本
 ================================================================
 
 【原理】
@@ -28,9 +28,10 @@
   --step        降采样间隔（每隔多少帧取一帧），默认 15
                 step=15 表示每 0.5s 一个关键帧（30fps×0.5s=15帧）
   --start-frame / --end-frame   原始帧区间
-  --move-time   复位到第一帧的时间(秒)，默认 4
+  --move-time   复位到第一帧的时间(秒)，默认 2
 ================================================================
 """
+
 import sys
 import os
 
@@ -56,12 +57,12 @@ def action38_to_joints23(a):
     """数据集 38 维 action -> 机器人 23 维 init_pose 格式（夹爪 mm->m）"""
     a = np.asarray(a, dtype=float)
     return (
-        list(a[16:21])       # 0:5  腰
-        + list(a[21:23])     # 5:7  头
-        + list(a[8:15])      # 7:14 左臂
-        + [a[15] / 1000.0]   # 14   左爪
-        + list(a[0:7])       # 15:22 右臂
-        + [a[7] / 1000.0]    # 22   右爪
+        list(a[16:21])  # 0:5  腰
+        + list(a[21:23])  # 5:7  头
+        + list(a[8:15])  # 7:14 左臂
+        + [a[15] / 1000.0]  # 14   左爪
+        + list(a[0:7])  # 15:22 右臂
+        + [a[7] / 1000.0]  # 22   右爪
     )
 
 
@@ -75,10 +76,14 @@ def wait_ready(galbot, timeout=5.0):
     """等传感器就绪（关节 + 底盘），就绪即返回 True，超时返回 False。"""
     t0 = time.time()
     while time.time() - t0 < timeout:
-        joint_ok = (galbot.galbot_interface._joint_sensor_vla is not None
-                    and len(galbot.galbot_interface.pose_buffer) >= 2)
-        chassis_ok = (galbot.galbot_interface.last_chassis_pos is not None
-                      or galbot.args.enable_chassis <= 0)
+        joint_ok = (
+            galbot.galbot_interface._joint_sensor_vla is not None
+            and len(galbot.galbot_interface.pose_buffer) >= 2
+        )
+        chassis_ok = (
+            galbot.galbot_interface.last_chassis_pos is not None
+            or galbot.args.enable_chassis <= 0
+        )
         if joint_ok and chassis_ok:
             return True
         time.sleep(0.05)
@@ -88,7 +93,7 @@ def wait_ready(galbot, timeout=5.0):
 def replay(galbot, df, fps, speed, start_frame, end_frame, move_time, step):
     n = len(df)
     end_frame = n if (end_frame is None or end_frame > n) else end_frame
-    actions = list(df["action"].iloc[max(0, start_frame):end_frame])
+    actions = list(df["action"].iloc[max(0, start_frame) : end_frame])
     if not actions:
         print("[replay] 没有可回放的帧")
         return
@@ -104,7 +109,9 @@ def replay(galbot, df, fps, speed, start_frame, end_frame, move_time, step):
     total_time = (len(indices) - 1) * key_dt
 
     print(f"[replay] 原始帧数: {len(actions)}  step={step}")
-    print(f"[replay] 降采样后关键帧: {len(keyframes)}  帧间隔: {key_dt:.3f}s  总时长: {total_time:.1f}s")
+    print(
+        f"[replay] 降采样后关键帧: {len(keyframes)}  帧间隔: {key_dt:.3f}s  总时长: {total_time:.1f}s"
+    )
 
     if not wait_ready(galbot, timeout=5.0):
         print("[replay] 传感器未就绪，无法回放")
@@ -115,7 +122,9 @@ def replay(galbot, df, fps, speed, start_frame, end_frame, move_time, step):
     galbot.shutdown_event.clear()
     galbot.error_imformation = ""
     aim = np.array(
-        [move_time] + action38_to_joints23(keyframes[0]) + list(galbot.galbot_interface.chassis_pos)
+        [move_time]
+        + action38_to_joints23(keyframes[0])
+        + list(galbot.galbot_interface.chassis_pos)
     ).reshape(-1, 1)
     galbot.set_wholebody_angle_asynchronous(aim, 0.03, 0.004)
     if galbot.error_imformation:
@@ -127,16 +136,16 @@ def replay(galbot, df, fps, speed, start_frame, end_frame, move_time, step):
     cur = list(galbot.galbot_interface.pose_buffer[1])  # 26维
     n_keys = len(keyframes)
     mat = np.zeros((2 + 26, 1 + n_keys))
-    mat[2:2 + 26, 0] = cur[0:26]
+    mat[2 : 2 + 26, 0] = cur[0:26]
 
     for j, a in enumerate(keyframes):
         mat[1, 1 + j] = (j + 1) * key_dt
-        mat[2:2 + 23, 1 + j] = action38_to_joints23(a)
-        mat[2 + 23:2 + 26, 1 + j] = action38_to_chassis(a)
+        mat[2 : 2 + 23, 1 + j] = action38_to_joints23(a)
+        mat[2 + 23 : 2 + 26, 1 + j] = action38_to_chassis(a)
 
     # 夹爪 m → mm
-    mat[2 + 14, :] *= 1000   # 左爪
-    mat[2 + 22, :] *= 1000   # 右爪
+    mat[2 + 14, :] *= 1000  # 左爪
+    mat[2 + 22, :] *= 1000  # 右爪
 
     print(f"[replay] 发布轨迹（{n_keys} 个关键帧，预计 {total_time:.1f}s）...")
     galbot.embosa_vla_publisher.pub_mat(mat)
@@ -160,17 +169,26 @@ if __name__ == "__main__":
     LoggerManager.get_logger()
     for listener in LoggerManager._queue_listeners.values():
         for h in listener.handlers:
-            if isinstance(h, logging.StreamHandler) and not isinstance(h, logging.FileHandler):
+            if isinstance(h, logging.StreamHandler) and not isinstance(
+                h, logging.FileHandler
+            ):
                 h.setLevel(logging.ERROR)
 
-    parser = argparse.ArgumentParser(description="降采样 Replay：每隔 step 帧取关键帧，一次性发给底层插值执行")
+    parser = argparse.ArgumentParser(
+        description="降采样 Replay：每隔 step 帧取关键帧，一次性发给底层插值执行"
+    )
     parser.add_argument("--parquet", default=None)
     parser.add_argument("--fps", type=int, default=30, help="原始帧率，默认30")
     parser.add_argument("--speed", type=float, default=1.0, help="速度倍率")
-    parser.add_argument("--step", type=int, default=15, help="降采样间隔（每隔多少帧取一帧），默认15（=0.5s/关键帧）")
+    parser.add_argument(
+        "--step",
+        type=int,
+        default=15,
+        help="降采样间隔（每隔多少帧取一帧），默认15（=0.5s/关键帧）",
+    )
     parser.add_argument("--start-frame", type=int, default=0)
     parser.add_argument("--end-frame", type=int, default=None)
-    parser.add_argument("--move-time", type=float, default=4)
+    parser.add_argument("--move-time", type=float, default=2)
     cli = parser.parse_args()
 
     pq = cli.parquet or PARQUET_PATH
@@ -179,7 +197,9 @@ if __name__ == "__main__":
         sys.exit(1)
     print(f"[replay] 数据文件: {pq}")
     df = pd.read_parquet(pq)
-    print(f"[replay] 总帧数: {len(df)}  fps={cli.fps} speed={cli.speed} step={cli.step}")
+    print(
+        f"[replay] 总帧数: {len(df)}  fps={cli.fps} speed={cli.speed} step={cli.step}"
+    )
 
     galbot = GalbotControl(Args())
     tool_shutdown = ShutdownTool()
@@ -192,6 +212,13 @@ if __name__ == "__main__":
     else:
         print("[replay] 等待超时，继续执行")
 
-    replay(galbot, df, cli.fps, cli.speed,
-           cli.start_frame, cli.end_frame, cli.move_time,
-           cli.step)
+    replay(
+        galbot,
+        df,
+        cli.fps,
+        cli.speed,
+        cli.start_frame,
+        cli.end_frame,
+        cli.move_time,
+        cli.step,
+    )
