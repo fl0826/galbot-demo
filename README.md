@@ -50,18 +50,11 @@ bash start.sh
 
 以下脚本均在 `client_server/` 目录下运行。
 
-**复位**
-
-```bash
-python reset.py                # 桌面位姿（默认）
-python reset.py --pose floor   # 地面位姿
-```
-
 **位姿工具**
 
 ```bash
-python pose_tool.py get --out my_pose.json          # 获取当前位姿  保存到 my_pose.json 
-python pose_tool.py reset --pose-file my_pose.json  # 移动到指定位姿 my_pose.json 
+python pose_tool.py get --out my_pose.json          # 获取当前位姿，保存到 my_pose.json
+python pose_tool.py reset --pose-file my_pose.json  # 移动到指定位姿 my_pose.json
 ```
 
 **轨迹回放**（验证 `traj/` 下的采集数据）

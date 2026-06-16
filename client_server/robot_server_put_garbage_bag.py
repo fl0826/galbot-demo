@@ -27,7 +27,7 @@ class GalbotVLA:
         self.last_action_time_delay = []
         for i in range(len(args.host)):
             self.model_agent.append(
-                ModelAgent(args.host[i], args.port1[i], args.action_horizon)
+                ModelAgent(args.host[i], args.port[i], args.action_horizon)
             )
             self.flag_infer_thread_is_run.append(0)
             self.flag_model_first_infer.append(True)
@@ -970,12 +970,14 @@ def api_health():
 
 
 if __name__ == "__main__":
+    import argparse
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--model-host", default="172.20.10.4", help="模型服务器IP")
     cli_args = parser.parse_args()
 
     _args_global.host = [cli_args.model_host]
-    _args_global.port1 = [MODEL_PORT]
+    _args_global.port = [MODEL_PORT]
 
     _vla = GalbotVLA(_args_global)
 
@@ -987,7 +989,7 @@ if __name__ == "__main__":
 
     print("=" * 60)
     print("银河1号真机服务 - 套垃圾袋 (v1)")
-    print(f"[Model]  模型服务: {_args_global.host[0]}:{_args_global.port1[0]}")
+    print(f"[Model]  模型服务: {_args_global.host[0]}:{_args_global.port[0]}")
     print("=" * 60)
     print(f"[Server] 端口: {SERVER_PORT}")
     print(f"[API]    触发推理: POST http://localhost:{SERVER_PORT}/api/put_garbage_bag")
