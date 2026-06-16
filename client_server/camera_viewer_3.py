@@ -112,6 +112,7 @@ _PLACEHOLDER_JPEG = b"\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x00\x00\x01\x00\x
 
 
 def _mjpeg_generator(key):
+    # 约 30fps 推帧；无图像时发占位帧保持连接不断
     while True:
         frame, _ = _viewer.get_frame(key)
         jpeg = frame if frame else _PLACEHOLDER_JPEG

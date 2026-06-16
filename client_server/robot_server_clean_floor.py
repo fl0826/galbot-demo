@@ -602,6 +602,8 @@ def api_stop():
 
 
 def _run_reset():
+    # 先通知底层停止当前运动，再调用 move_to_init_pose_wholebody 复位
+    # 使用独立线程执行，不阻塞 HTTP 响应
     global _task_status
     logger = LoggerManager.get_logger()
     with _task_lock:
@@ -627,6 +629,7 @@ def _run_reset():
                 logger.warning("[reset] 等待底层停止超时，继续尝试")
                 break
         time.sleep(0.5)
+        # 重置状态后设置 has_init_action=True，触发 move_to_init_pose
         galbot.shutdown_event.clear()
         galbot.error_imformation = ""
         _vla.shutdown_event.clear()

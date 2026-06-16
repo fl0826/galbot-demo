@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# 日志
+logs/
+*.log
+
+# 地图/导航二进制数据（大文件，不入库）
+nav/cur/*.bin
+nav/cur/*.pcd
+nav/cur/*.esdf
+nav/cur/relocalization/
+
+# macOS
+.DS_Store
+
+# 编辑器
+.vscode/
+.idea/
+*.swp

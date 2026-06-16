@@ -98,7 +98,7 @@ def replay(galbot, df, fps, speed, start_frame, end_frame, move_time, step):
         print("[replay] 没有可回放的帧")
         return
 
-    # 降采样：每隔 step 帧取一帧，末尾一定包含最后一帧
+    # 降采样：每隔 step 帧取一帧，末尾强制包含最后一帧，确保动作完整执行到底
     indices = list(range(0, len(actions), step))
     if indices[-1] != len(actions) - 1:
         indices.append(len(actions) - 1)
@@ -132,7 +132,12 @@ def replay(galbot, df, fps, speed, start_frame, end_frame, move_time, step):
         return
     print("[replay] 复位完成，开始降采样回放...")
 
-    # 构造完整 mat：第0列=当前位姿起点，后续每列=一个关键帧 + 时间戳
+    # mat 结构（交给底层一次性插值执行，与 reset 机制相同）：
+    #   [:,0]   当前真实位姿起点（pose_buffer，夹爪单位 m）
+    #   [1,j]   第 j 列的绝对时间戳（秒）
+    #   [2:25,j]关节目标（夹爪经 action38_to_joints23 已 /1000 转 m）
+    #   [25:28,j]底盘目标 [x, y, yaw]
+    # 最终统一 *1000 把所有列夹爪从 m 换回 mm 再发给底层
     cur = list(galbot.galbot_interface.pose_buffer[1])  # 26维
     n_keys = len(keyframes)
     mat = np.zeros((2 + 26, 1 + n_keys))
@@ -143,7 +148,7 @@ def replay(galbot, df, fps, speed, start_frame, end_frame, move_time, step):
         mat[2 : 2 + 23, 1 + j] = action38_to_joints23(a)
         mat[2 + 23 : 2 + 26, 1 + j] = action38_to_chassis(a)
 
-    # 夹爪 m → mm
+    # 夹爪 m → mm：pose_buffer 里夹爪也是 m，统一换算保证全列单位为 mm
     mat[2 + 14, :] *= 1000  # 左爪
     mat[2 + 22, :] *= 1000  # 右爪
 
