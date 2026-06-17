@@ -537,6 +537,172 @@ def _err(msg, status=400):
     return jsonify({"code": 1, "data": {}, "msg": msg}), status
 
 
+def _run_task():
+    global _task_status
+    with _task_lock:
+        _task_status.update(
+            {
+                "running": True,
+                "success": None,
+                "message": "推理执行中...",
+                "start_time": time.time(),
+                "end_time": None,
+            }
+        )
+    try:
+        success, msg = _vla.run(_args_global)
+        with _task_lock:
+            _task_status.update(
+                {
+                    "running": False,
+                    "success": success,
+                    "message": msg,
+                    "end_time": time.time(),
+                }
+            )
+    except Exception as e:
+        LoggerManager.get_logger().error(f"任务执行异常: {e}", exc_info=True)
+        with _task_lock:
+            _task_status.update(
+                {
+                    "running": False,
+                    "success": False,
+                    "message": str(e),
+                    "end_time": time.time(),
+                }
+            )
+
+
+@app.route("/api/put_garbage_bag", methods=["POST"])
+def api_put_garbage_bag():
+    """带复位的推理接口（正常启动）"""
+    global _task_thread
+    with _task_lock:
+        if _task_status["running"]:
+            return _err("任务正在执行中，请稍后再试")
+    _args_global.has_init_action = True
+    _task_thread = threading.Thread(target=_run_task, daemon=True)
+    _task_thread.start()
+    return _ok(msg="套垃圾袋推理任务已启动（含复位）")
+
+
+@app.route("/api/put_garbage_bag_resume", methods=["POST"])
+def api_put_garbage_bag_resume():
+    """不带复位的推理接口（断点续推）"""
+    global _task_thread
+    with _task_lock:
+        if _task_status["running"]:
+            return _err("任务正在执行中，请稍后再试")
+    _args_global.has_init_action = False
+    _task_thread = threading.Thread(target=_run_task, daemon=True)
+    _task_thread.start()
+    return _ok(msg="套垃圾袋推理任务已启动（跳过复位，断点续推）")
+
+
+@app.route("/api/stop", methods=["POST"])
+def api_stop():
+    """停止当前任务（阻塞等待任务线程真正退出）"""
+    global _task_thread
+    if _vla:
+        _vla.shutdown()
+        _vla.galbot.shutdown_event.set()
+        _vla.galbot.request_vla_service("stop")
+    if _task_thread and _task_thread.is_alive():
+        _task_thread.join(timeout=10)
+        if _task_thread.is_alive():
+            with _task_lock:
+                _task_status.update(
+                    {
+                        "running": True,
+                        "success": None,
+                        "message": "停止超时：任务线程仍未退出，请稍后再试或重启服务",
+                    }
+                )
+            return _err("停止超时：任务线程仍未退出，请稍后再试或重启服务", status=500)
+    with _task_lock:
+        _task_status["running"] = False
+        _task_status["message"] = "任务已停止"
+    return _ok(msg="任务已停止")
+
+
+def _run_reset():
+    # 先通知底层停止当前运动，再调用 move_to_init_pose_wholebody 复位
+    # 使用独立线程执行，不阻塞 HTTP 响应
+    global _task_status
+    logger = LoggerManager.get_logger()
+    with _task_lock:
+        _task_status.update(
+            {
+                "running": True,
+                "success": None,
+                "message": "复位执行中..",
+                "start_time": time.time(),
+                "end_time": None,
+            }
+        )
+    try:
+        galbot = _vla.galbot
+        t0 = time.perf_counter()
+        while True:
+            res = galbot.request_vla_service("stop")
+            logger.info(f"[reset] 等待底层停止: {res}")
+            if res == "stop":
+                break
+            time.sleep(0.1)
+            if time.perf_counter() - t0 > 3:
+                logger.warning("[reset] 等待底层停止超时，继续尝试")
+                break
+        time.sleep(0.5)
+        # 重置状态后设置 has_init_action=True，触发 move_to_init_pose
+        galbot.shutdown_event.clear()
+        galbot.error_imformation = ""
+        _vla.shutdown_event.clear()
+        _args_global.has_init_action = True
+        _vla.args = copy.deepcopy(_args_global)
+        _vla.galbot.args = _vla.args
+        _vla.galbot.galbot_interface.args = _vla.args
+        _vla.galbot.move_to_init_pose_wholebody()
+        if galbot.error_imformation:
+            raise RuntimeError(galbot.error_imformation)
+        with _task_lock:
+            _task_status.update(
+                {
+                    "running": False,
+                    "success": True,
+                    "message": "复位完成",
+                    "end_time": time.time(),
+                }
+            )
+    except Exception as e:
+        logger.error(f"复位异常: {e}", exc_info=True)
+        with _task_lock:
+            _task_status.update(
+                {
+                    "running": False,
+                    "success": False,
+                    "message": str(e),
+                    "end_time": time.time(),
+                }
+            )
+
+
+@app.route("/api/reset", methods=["POST"])
+def api_reset():
+    """仅复位，不推理（异步后台执行）"""
+    global _task_thread
+    if _vla:
+        _vla.shutdown()
+        _vla.galbot.shutdown_event.set()
+        _vla.galbot.request_vla_service("stop")
+    if _task_thread and _task_thread.is_alive():
+        _task_thread.join(timeout=10)
+        if _task_thread.is_alive():
+            return _err("当前任务线程仍未退出，不能复位，请稍后再试或重启服务", status=500)
+    _task_thread = threading.Thread(target=_run_reset, daemon=True)
+    _task_thread.start()
+    return _ok(msg="复位任务已启动")
+
+
 @app.route("/api/status", methods=["GET"])
 def api_status():
     with _task_lock:
