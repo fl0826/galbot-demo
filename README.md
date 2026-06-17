@@ -59,7 +59,7 @@ galbot-demo/
 | ---------------------- | ----------- |
 | `/api/pick_bag`        | 升降取垃圾袋，包含复位 |
 | `/api/bag_large_items` | 桌面大物品清理     |
-| `/api/sweep_trash`     | 抹布清理桌面垃圾    |
+| `/api/sweep_trash`     | 抹布清理龙虾    |
 | `/api/lift_bag`        | 提起袋子        |
 | `/api/reset`           | 复位到桌面默认位姿   |
 | `/api/open_gripper`    | 松开夹爪        |
@@ -84,8 +84,8 @@ bash start.sh
 **复位**
 
 ```bash
-python reset.py              # 默认复位到桌面位姿
-python reset.py --pose floor # 复位到地面/垃圾袋位姿
+python reset.py              # 默认复位到桌面任务初始位姿
+python reset.py --pose floor # 复位到地面/垃圾袋任务初始位姿
 ```
 
 **位姿工具**
