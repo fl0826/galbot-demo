@@ -697,7 +697,9 @@ def api_reset():
     if _task_thread and _task_thread.is_alive():
         _task_thread.join(timeout=10)
         if _task_thread.is_alive():
-            return _err("当前任务线程仍未退出，不能复位，请稍后再试或重启服务", status=500)
+            return _err(
+                "当前任务线程仍未退出，不能复位，请稍后再试或重启服务", status=500
+            )
     _task_thread = threading.Thread(target=_run_reset, daemon=True)
     _task_thread.start()
     return _ok(msg="复位任务已启动")

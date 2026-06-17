@@ -2,17 +2,27 @@ import sys
 import os
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
-from args import Args, OBS_STATE
+from args import (
+    Args,
+    OBS_Head_IMG,
+    OBS_PREV_STATE,
+    OBS_STATE,
+    OBS_Right_WRIST_IMG,
+    OBS_Left_WRIST_IMG,
+)
 from model_agent.model_agent import ModelAgent
 from galbot_control.galbot_control import GalbotControl
 from tool.logger import LoggerManager
 from tool.tool_shutdown import ShutdownTool
 from tool.tool_rate import ToolRate
+from tool.vla_profiler import profile_timeline, set_profile_enabled
+import sys
 import threading
 import time
 import numpy as np
 import copy
 from flask import Flask, jsonify
+import argparse
 
 
 class GalbotVLA:
@@ -602,8 +612,6 @@ def api_stop():
 
 
 def _run_reset():
-    # 先通知底层停止当前运动，再调用 move_to_init_pose_wholebody 复位
-    # 使用独立线程执行，不阻塞 HTTP 响应
     global _task_status
     logger = LoggerManager.get_logger()
     with _task_lock:
@@ -629,7 +637,6 @@ def _run_reset():
                 logger.warning("[reset] 等待底层停止超时，继续尝试")
                 break
         time.sleep(0.5)
-        # 重置状态后设置 has_init_action=True，触发 move_to_init_pose
         galbot.shutdown_event.clear()
         galbot.error_imformation = ""
         _vla.shutdown_event.clear()
@@ -700,7 +707,6 @@ def api_health():
 
 
 if __name__ == "__main__":
-    import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("--model-host", default="172.20.10.4", help="模型服务器IP")
     cli_args = parser.parse_args()
