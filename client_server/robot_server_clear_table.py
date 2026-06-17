@@ -563,9 +563,9 @@ MODEL_PORT = 6686  # 整理桌面模型端口
 _args_global = Args()
 _args_global.init_pose_file = "config/init_pose/zhiyuan_pick_trash_stand.json"
 _args_global.blocking = False
-# 工作模式：双手腕相机用 1280x720
-_args_global.raw_image_size_left_arm = [1280, 720]
-_args_global.raw_image_size_right_arm = [1280, 720]
+# 数采模式：双手腕相机用 640x360
+_args_global.raw_image_size_left_arm = [640, 360]
+_args_global.raw_image_size_right_arm = [640, 360]
 
 
 def _ok(data=None, msg=""):
