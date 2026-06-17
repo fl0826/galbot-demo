@@ -7,11 +7,11 @@
 ```
 galbot-demo/
 ├── client/          # 机器人端核心 VLA 调用脚本
-├── client_server/   # HTTP 服务 + 工具脚本
+├── client_server/   # HTTP 服务 + 工具脚本（含 start.sh）
 ├── bash/            # 推理服务器：拉模型 / 启动模型服务
 ├── traj/            # 采集轨迹 parquet 文件
 ├── config/          # 初始位姿和高度配置
-└── version/               # 历史版本存档（v0 / v1导航版）
+└── version/         # 历史版本存档（v0 / v1导航版）
 ```
 
 ## 任务与端口
@@ -69,13 +69,14 @@ galbot-demo/
 
 ## 运行模式
 
-**HTTP 服务模式**：修改 `start.sh` 顶部的模型服务器 IP，一键启动三个服务 + 交互菜单。
+**HTTP 服务模式**：修改 `client_server/start.sh` 顶部的模型服务器 IP，一键启动三个服务 + 交互菜单。
 
 ```bash
+cd client_server
 bash start.sh
 ```
 
-三个服务日志分别写入 `logs/`，菜单里输入编号调用接口。
+三个服务日志分别写入 `client_server/logs/`，菜单里输入编号调用接口。
 
 ## 工具脚本
 

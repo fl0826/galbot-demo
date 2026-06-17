@@ -689,7 +689,7 @@ if __name__ == "__main__":
     print(
         f"[API]    桌面物品清理: POST http://localhost:{SERVER_PORT}/api/bag_large_items"
     )
-    print(f"[API]    抹布清理:     POST http://localhost:{SERVER_PORT}/api/sweep_trash")
+    print(f"[API]    抹布清理龙虾: POST http://localhost:{SERVER_PORT}/api/sweep_trash")
     print(f"[API]    提起袋子:     POST http://localhost:{SERVER_PORT}/api/lift_bag")
     print(f"[API]    停止任务:        POST http://localhost:{SERVER_PORT}/api/stop")
     print(f"[API]    仅复位(桌面):    POST http://localhost:{SERVER_PORT}/api/reset")

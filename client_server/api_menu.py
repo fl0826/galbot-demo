@@ -47,7 +47,7 @@ ACTIONS = [
     # ===== 清理桌面 - 推理 =====
     ApiAction("8",  "清理桌面：升降取垃圾袋（含复位）",   "POST", 9052, "/api/pick_bag",               "清理桌面-推理"),
     ApiAction("9",  "清理桌面：桌面物品清理",             "POST", 9052, "/api/bag_large_items",        "清理桌面-推理"),
-    ApiAction("10", "清理桌面：抹布清理",                 "POST", 9052, "/api/sweep_trash",            "清理桌面-推理"),
+    ApiAction("10", "清理桌面：抹布清理龙虾",                 "POST", 9052, "/api/sweep_trash",            "清理桌面-推理"),
     ApiAction("11", "清理桌面：提起袋子",                 "POST", 9052, "/api/lift_bag",               "清理桌面-推理"),
     ApiAction("12", "清理桌面：停止",                     "POST", 9052, "/api/stop",                   "清理桌面-推理"),
 
