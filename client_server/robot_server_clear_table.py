@@ -612,34 +612,32 @@ def _wait_replay_sensor_ready(galbot, timeout=5.0):
 
 
 def _run_replay_downsample(
-    parquet_path: str,
+    parquet_path: str = "/home/galbot/vla_client/拿毛巾.parquet",
     fps=30,
     speed=1.0,
     step=15,
     start_frame=0,
     end_frame=None,
-    move_time=4,
-    no_reset=True,
+    move_time=2,
 ):
     """
-    降采样 Replay：每隔 step 帧取一个关键帧，一次性发给底层，底层自己插值执行。
-    和 reset 复位机制完全相同，丝滑无抖动。
+    降采样 Replay — 完全对齐 replay_downsample.py 独立脚本。
+    从 parquet 按 step 间隔取关键帧，一次性发给底层插值执行（关节+底盘全部回放）。
+    parquet 路径固定为拿毛巾轨迹，也可通过参数覆盖。
     """
     global _task_status
     logger = LoggerManager.get_logger()
 
     with _task_lock:
-        _task_status.update(
-            {
-                "running": True,
-                "success": None,
-                "message": "Replay降采样执行中...",
-                "task_key": "replay_downsample",
-                "task_prompt": parquet_path,
-                "start_time": time.time(),
-                "end_time": None,
-            }
-        )
+        _task_status.update({
+            "running": True,
+            "success": None,
+            "message": "Replay执行中...",
+            "task_key": "replay_downsample",
+            "task_prompt": parquet_path,
+            "start_time": time.time(),
+            "end_time": None,
+        })
 
     try:
         if not os.path.exists(parquet_path):
@@ -651,13 +649,13 @@ def _run_replay_downsample(
 
         n = len(df)
         end_frame = n if (end_frame is None or end_frame > n) else end_frame
-        actions = list(df["action"].iloc[max(0, start_frame) : end_frame])
+        actions = list(df["action"].iloc[max(0, start_frame):end_frame])
         if not actions:
             raise ValueError("没有可回放的帧")
 
         galbot = _vla.galbot
 
-        # 轮询确认底层已停（外层接口已调用 shutdown，这里只需确认底层状态）
+        # 等底层真正停止
         t0 = time.perf_counter()
         while True:
             res = galbot.request_vla_service("stop")
@@ -676,7 +674,7 @@ def _run_replay_downsample(
         if not _wait_replay_sensor_ready(galbot, timeout=5):
             raise RuntimeError("传感器未就绪，无法回放")
 
-        # 降采样：每隔 step 帧取一个关键帧，末尾一定包含最后一帧
+        # 降采样：每隔 step 帧取一帧，末尾强制包含最后一帧
         indices = list(range(0, len(actions), step))
         if indices[-1] != len(actions) - 1:
             indices.append(len(actions) - 1)
@@ -688,47 +686,37 @@ def _run_replay_downsample(
 
         logger.info(
             f"[replay] 原始帧数={len(actions)}, 关键帧数={len(keyframes)}, "
-            f"step={step}, key_dt={key_dt:.3f}s, 总时长={total_time:.1f}s, no_reset={no_reset}"
+            f"step={step}, key_dt={key_dt:.3f}s, 总时长={total_time:.1f}s"
         )
 
-        if no_reset:
-            logger.info(
-                "[replay] 跳过复位，直接开始回放（仅底盘移动，关节保持当前位置）..."
-            )
-        else:
-            logger.info(f"[replay] 复位到第一帧（{move_time}s）...")
-            aim = np.array(
-                [move_time]
-                + _action38_to_joints23(keyframes[0])
-                + list(galbot.galbot_interface.chassis_pos)
-            ).reshape(-1, 1)
-            galbot.set_wholebody_angle_asynchronous(aim, 0.03, 0.004)
-            if galbot.error_imformation:
-                raise RuntimeError(f"复位失败: {galbot.error_imformation}")
-            logger.info("[replay] 复位完成，开始降采样回放...")
+        # 复位到第一帧（与独立脚本一致）
+        logger.info(f"[replay] 复位到第一帧（{move_time}s）...")
+        aim = np.array(
+            [move_time]
+            + _action38_to_joints23(keyframes[0])
+            + list(galbot.galbot_interface.chassis_pos)
+        ).reshape(-1, 1)
+        galbot.set_wholebody_angle_asynchronous(aim, 0.03, 0.004)
+        if galbot.error_imformation:
+            raise RuntimeError(f"复位失败: {galbot.error_imformation}")
+        logger.info("[replay] 复位完成，开始降采样回放...")
 
-        # 构造完整 mat：第0列=当前位姿起点，后续列=各关键帧（带时间戳）
-        # 一次性发给底层，底层自己平滑插值——和 reset 机制完全一致
+        # 构造 mat：第0列=当前位姿起点，后续列=关键帧目标（关节+底盘）
         cur = list(galbot.galbot_interface.pose_buffer[1])  # 26维
         n_keys = len(keyframes)
         mat = np.zeros((2 + 26, 1 + n_keys))
-        mat[2 : 2 + 26, 0] = cur[0:26]  # 第0列：当前位姿起点
+        mat[2:2 + 26, 0] = cur[0:26]
 
         for j, a in enumerate(keyframes):
             mat[1, 1 + j] = (j + 1) * key_dt
-            if no_reset:
-                mat[2 : 2 + 23, 1 + j] = cur[0:23]
-            else:
-                mat[2 : 2 + 23, 1 + j] = _action38_to_joints23(a)
-            mat[2 + 23 : 2 + 26, 1 + j] = _action38_to_chassis(a)
+            mat[2:2 + 23, 1 + j] = _action38_to_joints23(a)   # 关节目标从 parquet 读
+            mat[2 + 23:2 + 26, 1 + j] = _action38_to_chassis(a)
 
         mat[2 + 14, :] *= 1000  # 左爪 m->mm
         mat[2 + 22, :] *= 1000  # 右爪 m->mm
 
         galbot.embosa_vla_publisher.pub_mat(mat)
-        logger.info(
-            f"[replay] 已发布 {n_keys} 个关键帧，等待执行完成（{total_time:.1f}s）"
-        )
+        logger.info(f"[replay] 已发布 {n_keys} 个关键帧，等待执行完成（{total_time:.1f}s）")
 
         # 等轨迹执行完
         t_end = time.perf_counter() + total_time
@@ -738,31 +726,26 @@ def _run_replay_downsample(
             elapsed = total_time - (t_end - time.perf_counter())
             pct = min(elapsed / total_time * 100, 100)
             with _task_lock:
-                _task_status["message"] = f"Replay降采样执行中... {pct:.1f}%"
+                _task_status["message"] = f"Replay执行中... {pct:.1f}%"
             time.sleep(0.5)
 
         with _task_lock:
-            _task_status.update(
-                {
-                    "running": False,
-                    "success": True,
-                    "message": "Replay降采样回放完成",
-                    "end_time": time.time(),
-                }
-            )
+            _task_status.update({
+                "running": False,
+                "success": True,
+                "message": "Replay回放完成",
+                "end_time": time.time(),
+            })
+
     except Exception as e:
         logger.error(f"Replay执行异常: {e}", exc_info=True)
         with _task_lock:
-            _task_status.update(
-                {
-                    "running": False,
-                    "success": False,
-                    "message": str(e),
-                    "end_time": time.time(),
-                }
-            )
-
-
+            _task_status.update({
+                "running": False,
+                "success": False,
+                "message": str(e),
+                "end_time": time.time(),
+            })
 # ==================== 任务定义 ====================
 TASK_MAP = {
     "pick_bag": {
@@ -958,12 +941,10 @@ def api_reset():
 
 @app.route("/api/replay_downsample", methods=["POST"])
 def api_replay_downsample():
-    """降采样 Replay。JSON参数: parquet_path 必填，step 可选（默认15），no_reset 默认true（仅底盘）。"""
+    """降采样 Replay。JSON参数: parquet_path 必填，step 可选（默认15）"""
     global _task_thread
     body = request.get_json(silent=True) or {}
-    parquet_path = body.get("parquet_path") or body.get("parquet")
-    if not parquet_path:
-        return _err("缺少参数 parquet_path")
+    parquet_path = body.get("parquet_path") or body.get("parquet") or "/home/galbot/vla_client/拿毛巾.parquet"
 
     fps = int(body.get("fps", 30))
     speed = float(body.get("speed", 1.0))
@@ -971,8 +952,7 @@ def api_replay_downsample():
     start_frame = int(body.get("start_frame", 0))
     end_frame = body.get("end_frame", None)
     end_frame = int(end_frame) if end_frame is not None else None
-    move_time = float(body.get("move_time", 4))
-    no_reset = bool(body.get("no_reset", True))
+    move_time = float(body.get("move_time", 2))
 
     with _task_lock:
         if _task_status["running"]:
@@ -991,7 +971,6 @@ def api_replay_downsample():
             start_frame,
             end_frame,
             move_time,
-            no_reset,
         ),
         daemon=True,
     )
@@ -1005,7 +984,6 @@ def api_replay_downsample():
             "start_frame": start_frame,
             "end_frame": end_frame,
             "move_time": move_time,
-            "no_reset": no_reset,
         },
         msg="Replay降采样任务已启动",
     )
