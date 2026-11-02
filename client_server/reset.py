@@ -28,8 +28,6 @@ import time
 POSE_PRESETS = {
     "floor": "config/init_pose/zhiyuan_pick_trash.json",  # 地面 / 垃圾袋
     "table": "config/init_pose/zhiyuan_pick_trash_stand.json",  # 桌面
-    "tall": "config/init_pose/zhiyuan_pick_trash_tall.json",  # 提完袋子后
-    "tall_open": "config/init_pose/zhiyuan_pick_trash_tall_open.json",  # 张开
 }
 
 
